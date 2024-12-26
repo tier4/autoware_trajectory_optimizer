@@ -15,8 +15,10 @@
 #include "autoware/prediction_to_trajectory_converter/prediction_to_trajectory_converter.hpp"
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/universe_utils/geometry/geometry.hpp>
 
+#include <iostream>
 #include <vector>
 
 namespace autoware::prediction_to_trajectory_converter
@@ -49,6 +51,35 @@ PredictionToTrajectory::PredictionToTrajectory(const rclcpp::NodeOptions & optio
 
 void PredictionToTrajectory::process([[maybe_unused]] const PredictedObjects::ConstSharedPtr msg)
 {
+  if (msg->objects.empty()) {
+    RCLCPP_WARN(get_logger(), "Received empty predicted objects message");
+    return;
+  }
+  const auto & header = msg->header;
+  const auto & ego_object = msg->objects[0];
+  Trajectory trajectory;
+  trajectory.header = header;
+  auto max_distance = 0.0;
+  for (const auto & predicted_path : ego_object.kinematics.predicted_paths) {
+    std::vector<TrajectoryPoint> trajectory_points;
+    for (const auto & point : predicted_path.path) {
+      TrajectoryPoint trajectory_point;
+      trajectory_point.pose = point;
+      trajectory_point.longitudinal_velocity_mps =
+        static_cast<float>(ego_object.kinematics.initial_twist_with_covariance.twist.linear.x);
+      trajectory_point.acceleration_mps2 = 0.0;
+      trajectory_points.push_back(trajectory_point);
+    }
+    const auto distance = autoware::motion_utils::calcSignedArcLength(
+      trajectory_points, 0, trajectory_points.size() - 1);
+    if (distance > max_distance) {
+      max_distance = distance;
+      trajectory.points = trajectory_points;
+    }
+  }
+  trajectory.header = header;
+  trajectory.header.stamp = this->now();
+  pub_->publish(trajectory);
 }
 }  // namespace autoware::prediction_to_trajectory_converter
 
