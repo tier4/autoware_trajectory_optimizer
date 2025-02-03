@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/prediction_to_trajectory_converter/prediction_to_trajectory_converter.hpp"
+#include "autoware/trajectory_interpolator/trajectory_interpolator.hpp"
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -21,11 +21,11 @@
 #include <iostream>
 #include <vector>
 
-namespace autoware::prediction_to_trajectory_converter
+namespace autoware::trajectory_interpolator
 {
 
 PredictionToTrajectory::PredictionToTrajectory(const rclcpp::NodeOptions & options)
-: ConverterBase("prediction_to_trajectory_converter", options)
+: ConverterBase("trajectory_interpolator", options)
 {
   // Retrieve parameters from the base class
   const auto input_topic = this->get_parameter("input_topic").as_string();
@@ -81,8 +81,7 @@ void PredictionToTrajectory::process([[maybe_unused]] const PredictedObjects::Co
   trajectory.header.stamp = this->now();
   pub_->publish(trajectory);
 }
-}  // namespace autoware::prediction_to_trajectory_converter
+}  // namespace autoware::trajectory_interpolator
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::prediction_to_trajectory_converter::PredictionToTrajectory)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::trajectory_interpolator::PredictionToTrajectory)

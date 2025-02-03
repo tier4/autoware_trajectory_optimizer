@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>autoware_prediction_to_trajectory_converter</name>
+  <name>autoware_trajectory_interpolator</name>
   <version>0.39.0</version>
-  <description>The autoware_prediction_to_trajectory_converter package</description>
+  <description>The autoware_trajectory_interpolator package</description>
 
   <maintainer email="daniel.sanchez@tier4.jp">Daniel Sanchez</maintainer>
 

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
-#define AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
+#define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
 #include "autoware/planning_topic_converter/converter_base.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -24,7 +24,7 @@
 
 #include <string>
 
-namespace autoware::prediction_to_trajectory_converter
+namespace autoware::trajectory_interpolator
 {
 
 using autoware::planning_topic_converter::ConverterBase;
@@ -41,6 +41,6 @@ private:
   void process(const PredictedObjects::ConstSharedPtr msg) override;
 };
 
-}  // namespace autoware::prediction_to_trajectory_converter
+}  // namespace autoware::trajectory_interpolator
 
-#endif  // AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_

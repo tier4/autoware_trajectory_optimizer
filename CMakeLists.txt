@@ -1,27 +1,27 @@
 cmake_minimum_required(VERSION 3.22)
-project(autoware_prediction_to_trajectory_converter)
+project(autoware_trajectory_interpolator)
 
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 
 # control validator
-ament_auto_add_library(autoware_prediction_to_trajectory_converter_component SHARED
-  include/autoware/prediction_to_trajectory_converter/prediction_to_trajectory_converter.hpp
-  src/prediction_to_trajectory_converter.cpp
+ament_auto_add_library(autoware_trajectory_interpolator_component SHARED
+  include/autoware/trajectory_interpolator/trajectory_interpolator.hpp
+  src/trajectory_interpolator.cpp
 )
-target_link_libraries(autoware_prediction_to_trajectory_converter_component)
-rclcpp_components_register_node(autoware_prediction_to_trajectory_converter_component
-  PLUGIN "autoware::prediction_to_trajectory_converter::PredictionToTrajectory"
-  EXECUTABLE autoware_prediction_to_trajectory_converter_node
+target_link_libraries(autoware_trajectory_interpolator_component)
+rclcpp_components_register_node(autoware_trajectory_interpolator_component
+  PLUGIN "autoware::trajectory_interpolator::PredictionToTrajectory"
+  EXECUTABLE autoware_trajectory_interpolator_node
 )
 
 # if(BUILD_TESTING)
 #   file(GLOB_RECURSE TEST_SOURCES test/*.cpp)
-#   ament_add_gtest(test_autoware_prediction_to_trajectory_converter
+#   ament_add_gtest(test_autoware_trajectory_interpolator
 #     ${TEST_SOURCES}
 #   )
-#   target_link_libraries(test_autoware_prediction_to_trajectory_converter autoware_prediction_to_trajectory_converter_component)
+#   target_link_libraries(test_autoware_trajectory_interpolator autoware_trajectory_interpolator_component)
 # endif()
 
 ament_auto_package(
