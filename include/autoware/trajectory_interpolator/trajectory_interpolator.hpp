@@ -15,30 +15,49 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
-#include "autoware/planning_topic_converter/converter_base.hpp"
+#include "autoware/universe_utils/ros/polling_subscriber.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+#include <rclcpp/subscription.hpp>
+
+#include "nav_msgs/msg/odometry.hpp"
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <string>
+#include <vector>
 
 namespace autoware::trajectory_interpolator
 {
 
-using autoware::planning_topic_converter::ConverterBase;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
+using nav_msgs::msg::Odometry;
 
-class PredictionToTrajectory : public ConverterBase<PredictedObjects, Trajectory>
+class TrajectoryInterpolator : public rclcpp::Node
 {
 public:
-  explicit PredictionToTrajectory(const rclcpp::NodeOptions & options);
+  explicit TrajectoryInterpolator(const rclcpp::NodeOptions & options);
 
 private:
-  void process(const PredictedObjects::ConstSharedPtr msg) override;
+  void on_traj(const Trajectory::ConstSharedPtr msg);
+
+  Trajectory interpolate_trajectory(
+    const Trajectory & input_trajectory, const Odometry & current_odometry);
+
+  static std::vector<TrajectoryPoint> clamp_negative_velocities(
+    std::vector<TrajectoryPoint> & input_trajectory_array);
+  // interface publisher
+  rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_;
+  // interface subscriber
+  rclcpp::Subscription<Trajectory>::SharedPtr traj_sub_;
+
+  autoware::universe_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
+    this, "~/input/odometry"};
+
+  Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
 };
 
 }  // namespace autoware::trajectory_interpolator

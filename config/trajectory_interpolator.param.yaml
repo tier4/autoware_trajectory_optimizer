@@ -1,0 +1,4 @@
+/**:
+  ros__parameters:
+    input_topic: "mtr/trajectory"
+    output_topic: "interp/mtr/trajectory"

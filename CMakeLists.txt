@@ -12,7 +12,7 @@ ament_auto_add_library(autoware_trajectory_interpolator_component SHARED
 )
 target_link_libraries(autoware_trajectory_interpolator_component)
 rclcpp_components_register_node(autoware_trajectory_interpolator_component
-  PLUGIN "autoware::trajectory_interpolator::PredictionToTrajectory"
+  PLUGIN "autoware::trajectory_interpolator::TrajectoryInterpolator"
   EXECUTABLE autoware_trajectory_interpolator_node
 )
 

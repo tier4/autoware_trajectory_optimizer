@@ -14,6 +14,7 @@
 
   <depend>autoware_motion_utils</depend>
   <depend>autoware_planning_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>autoware_planning_topic_converter</depend>
   <depend>autoware_universe_utils</depend>
   <depend>rclcpp</depend>
