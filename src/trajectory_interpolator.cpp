@@ -66,43 +66,49 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
 
   clamp_negative_velocities(traj_points);
 
-  constexpr double nearest_dist_threshold = 2.0;
-  constexpr double nearest_yaw_threshold = 1.0;  // [rad]
+  // constexpr double nearest_dist_threshold = 2.0;
+  // constexpr double nearest_yaw_threshold = 1.0;  // [rad]
 
-  // Resample trajectory with ego-velocity based interval distance
-  auto traj_resampled = smoother_->resampleTrajectory(
-    traj_points, current_odometry_ptr_->twist.twist.linear.x, current_odometry_ptr_->pose.pose,
-    nearest_dist_threshold, nearest_yaw_threshold);
+  // // Resample trajectory with ego-velocity based interval distance
+  // auto traj_resampled = smoother_->resampleTrajectory(
+  //   traj_points, current_odometry_ptr_->twist.twist.linear.x, current_odometry_ptr_->pose.pose,
+  //   nearest_dist_threshold, nearest_yaw_threshold);
 
-  const size_t traj_resampled_closest =
-    autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
-      traj_resampled, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
-      nearest_yaw_threshold);
+  // const size_t traj_resampled_closest =
+  //   autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
+  //     traj_resampled, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
+  //     nearest_yaw_threshold);
 
-  // Clip trajectory from closest point
-  std::vector<TrajectoryPoint> clipped;
-  clipped.insert(
-    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
+  // // Clip trajectory from closest point
+  // std::vector<TrajectoryPoint> clipped;
+  // clipped.insert(
+  //   clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
 
-  // Set maximum acceleration before applying smoother. Depends on acceleration request from
-  // external velocity limit
-  const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
-  const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
-  smoother_->setMaxAccel(smoother_max_acceleration);
-  smoother_->setMaxJerk(smoother_max_jerk);
+  // // Set maximum acceleration before applying smoother. Depends on acceleration request from
+  // // external velocity limit
+  // const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
+  // const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
+  // smoother_->setMaxAccel(smoother_max_acceleration);
+  // smoother_->setMaxJerk(smoother_max_jerk);
 
-  auto first_point_speed = traj_points.front().longitudinal_velocity_mps;
-  auto first_point_acc = traj_points.front().acceleration_mps2;
+  // auto first_point_speed = traj_points.front().longitudinal_velocity_mps;
+  // auto first_point_acc = traj_points.front().acceleration_mps2;
 
-  std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
-  std::vector<TrajectoryPoint> traj_smoothed;
-  if (!smoother_->apply(
-        first_point_speed, first_point_acc, clipped, traj_smoothed, debug_trajectories, false)) {
-    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
-  }
+  // std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
+  // std::vector<TrajectoryPoint> traj_smoothed;
+  // if (!smoother_->apply(
+  //       first_point_speed, first_point_acc, clipped, traj_smoothed, debug_trajectories, false)) {
+  //   RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+  // }
 
   NewTrajectory output_new_traj = input_trajectory;
-  output_new_traj.points = traj_smoothed;
+  output_new_traj.points = traj_points;
+
+  for (auto & point : output_new_traj.points) {
+    point.longitudinal_velocity_mps += 0.1;
+    if (current_odometry_ptr_->twist.twist.linear.x < 2.0) point.acceleration_mps2 = 1.0;
+  }
+
   return output_new_traj;
 }
 
