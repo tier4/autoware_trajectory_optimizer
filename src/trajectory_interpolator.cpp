@@ -19,6 +19,7 @@
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/universe_utils/geometry/geometry.hpp>
+#include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -37,6 +38,19 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   // interface publisher
   traj_pub_ = create_publisher<Trajectory>("smoothed/mtr/trajectory", 5);
   trajectories_pub_ = create_publisher<Trajectories>("smoothed/mtr/trajectories", 5);
+
+  // create time_keeper and its publisher
+  // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
+  debug_processing_time_detail_ = create_publisher<autoware::universe_utils::ProcessingTimeDetail>(
+    "~/debug/processing_time_detail_ms", 1);
+  time_keeper_ =
+    std::make_shared<autoware::universe_utils::TimeKeeper>(debug_processing_time_detail_);
+
+  // const auto vehicle_info =
+  // autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+  constexpr double wheelbase = 2.74;  // vehicle_info.wheel_base_m;
+  smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
+  smoother_->setWheelBase(wheelbase);
 }
 
 NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
@@ -44,7 +58,7 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
 {
   auto traj_points = input_trajectory.points;
   // guard for invalid trajectory
-  // traj_points = autoware::motion_utils::removeOverlapPoints(traj_points);
+  traj_points = autoware::motion_utils::removeOverlapPoints(traj_points);
   if (traj_points.size() < 2) {
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
     return input_trajectory;
@@ -52,50 +66,44 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
 
   clamp_negative_velocities(traj_points);
 
-  // constexpr double nearest_dist_threshold = 2.0;
-  // constexpr double nearest_yaw_threshold = 1.0;  // [rad]
+  constexpr double nearest_dist_threshold = 2.0;
+  constexpr double nearest_yaw_threshold = 1.0;  // [rad]
 
-  // // Arc length from the initial point to the closest point
-  // const auto current_pose = current_odometry.pose.pose;
+  // Resample trajectory with ego-velocity based interval distance
+  auto traj_resampled = smoother_->resampleTrajectory(
+    traj_points, current_odometry_ptr_->twist.twist.linear.x, current_odometry_ptr_->pose.pose,
+    nearest_dist_threshold, nearest_yaw_threshold);
 
-  // const size_t current_seg_idx =
-  //   autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
-  //     traj_points, current_pose, nearest_dist_threshold, nearest_yaw_threshold);
-  // const double negative_front_arclength_value = autoware::motion_utils::calcSignedArcLength(
-  //   traj_points, current_pose.position, current_seg_idx, traj_points.back().pose.position, 0);
-  // const auto front_arclength_value = std::fabs(negative_front_arclength_value);
+  const size_t traj_resampled_closest =
+    autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
+      traj_resampled, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
+      nearest_yaw_threshold);
 
-  // std::vector<double> out_arclength;
-  // // Step1. Resample front trajectory
-  // constexpr double front_ds = 0.1;
-  // for (double ds = 0.0; ds <= front_arclength_value; ds += front_ds) {
-  //   out_arclength.push_back(ds);
-  // }
-  // if (std::fabs(out_arclength.back() - front_arclength_value) < 1e-3) {
-  //   out_arclength.back() = front_arclength_value;
-  // } else {
-  //   out_arclength.push_back(front_arclength_value);
-  // }
+  // Clip trajectory from closest point
+  std::vector<TrajectoryPoint> clipped;
+  clipped.insert(
+    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
 
-  // auto output_traj = autoware::motion_utils::resampleTrajectory(
-  //   autoware::motion_utils::convertToTrajectory(traj_points), out_arclength, true, true, false);
+  // Set maximum acceleration before applying smoother. Depends on acceleration request from
+  // external velocity limit
+  const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
+  const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
+  smoother_->setMaxAccel(smoother_max_acceleration);
+  smoother_->setMaxJerk(smoother_max_jerk);
 
-  // // output_traj =
-  // //   autoware::motion_utils::resampleTrajectory(output_traj, 0.1, true, true, true, true);
-  // std::cerr << "Resampled trajectory size: " << output_traj.points.size() << std::endl;
-  // std::cerr << "out_arc_length: " << out_arclength.back() << std::endl;
+  auto first_point_speed = traj_points.front().longitudinal_velocity_mps;
+  auto first_point_acc = traj_points.front().acceleration_mps2;
 
-  // int i = 0;
-  // for (auto & point : output_traj.points) {
-  //   std::cerr << "point(" << i++
-  //             << ") x: " << point.pose.position.x - output_traj.points.front().pose.position.x
-  //             << " y: " << point.pose.position.y - output_traj.points.front().pose.position.y
-  //             << std::endl;
-  // }
+  std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
+  std::vector<TrajectoryPoint> traj_smoothed;
+  if (!smoother_->apply(
+        first_point_speed, first_point_acc, clipped, traj_smoothed, debug_trajectories, false)) {
+    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+  }
 
-  NewTrajectory output_traj = input_trajectory;
-  output_traj.points = traj_points;
-  return output_traj;
+  NewTrajectory output_new_traj = input_trajectory;
+  output_new_traj.points = traj_smoothed;
+  return output_new_traj;
 }
 
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)

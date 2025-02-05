@@ -16,6 +16,8 @@
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
 #include "autoware/universe_utils/ros/polling_subscriber.hpp"
+#include "autoware/universe_utils/system/time_keeper.hpp"
+#include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include <rclcpp/subscription.hpp>
@@ -32,6 +34,7 @@
 namespace autoware::trajectory_interpolator
 {
 
+using autoware::velocity_smoother::JerkFilteredSmoother;
 using autoware_new_planning_msgs::msg::Trajectories;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
@@ -58,11 +61,15 @@ private:
   // interface publisher
   rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_;  // Rviz debug
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
+  rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
+    debug_processing_time_detail_;
 
   autoware::universe_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
     this, "~/input/odometry"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
+  mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
+  std::shared_ptr<JerkFilteredSmoother> smoother_;
 };
 
 }  // namespace autoware::trajectory_interpolator
