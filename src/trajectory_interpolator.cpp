@@ -90,16 +90,13 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   }
 
   clamp_negative_velocities(traj_points);
-
-  set_max_velocity(traj_points);
-
   set_timestamps(traj_points, 0.1);
 
-  // traj_points.front().longitudinal_velocity_mps = 1.0;
-  traj_points.back().longitudinal_velocity_mps = 0.0;
+  traj_points.front().longitudinal_velocity_mps = 1.0;
+  // traj_points.back().longitudinal_velocity_mps = 0.0;
   // traj_points.front().acceleration_mps2 = 1.0;
 
-  constexpr double nearest_dist_threshold = 2.0;
+  constexpr double nearest_dist_threshold = 0.5;
   constexpr double nearest_yaw_threshold = 1.0;  // [rad]
 
   constexpr double target_pull_out_speed_mps = 1.0;
@@ -126,8 +123,8 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   // Resample trajectory with ego-velocity based interval distance
 
   traj_points = smoother_->resampleTrajectory(
-    traj_points, current_odometry_ptr_->twist.twist.linear.x, current_odometry_ptr_->pose.pose,
-    nearest_dist_threshold, nearest_yaw_threshold);
+    traj_points, initial_motion_speed, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
+    nearest_yaw_threshold);
 
   const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
     traj_points, current_odometry_ptr_->pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
@@ -187,10 +184,11 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 void TrajectoryInterpolator::clamp_negative_velocities(
   std::vector<TrajectoryPoint> & input_trajectory_array)
 {
-  std::vector<TrajectoryPoint> output_trajectory;
-  for (auto & point : input_trajectory_array) {
-    point.longitudinal_velocity_mps = std::max(0.0f, point.longitudinal_velocity_mps);
-  }
+  input_trajectory_array.erase(
+    std::remove_if(
+      input_trajectory_array.begin(), input_trajectory_array.end(),
+      [](const TrajectoryPoint & point) { return point.longitudinal_velocity_mps < 0.0; }),
+    input_trajectory_array.end());
 }
 
 void TrajectoryInterpolator::set_max_velocity(std::vector<TrajectoryPoint> & input_trajectory_array)
