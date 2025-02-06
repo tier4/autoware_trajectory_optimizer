@@ -22,7 +22,9 @@
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <iostream>
+#include <numeric>
 #include <vector>
 
 namespace autoware::trajectory_interpolator
@@ -53,6 +55,29 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   smoother_->setWheelBase(wheelbase);
 }
 
+void TrajectoryInterpolator::set_timestamps(
+  std::vector<TrajectoryPoint> & input_trajectory_array, double time_interval_sec)
+{
+  double timestamp = 0.0;
+  for (auto & point : input_trajectory_array) {
+    point.time_from_start = rclcpp::Duration::from_seconds(timestamp);
+    timestamp += time_interval_sec;
+  }
+}
+
+void TrajectoryInterpolator::set_initial_target_velocity(
+  std::vector<TrajectoryPoint> & input_trajectory_array, double target_velocity,
+  double time_interval_sec)
+{
+  auto total_time = time_interval_sec * input_trajectory_array.size();
+  auto acceleration = target_velocity / total_time;
+  auto velocity = 0.0;
+  for (auto & point : input_trajectory_array) {
+    point.longitudinal_velocity_mps = velocity;
+    velocity += acceleration * time_interval_sec;
+  }
+}
+
 NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   const NewTrajectory & input_trajectory, [[maybe_unused]] const Odometry & current_odometry)
 {
@@ -63,51 +88,67 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
     return input_trajectory;
   }
-
+  constexpr double target_pull_out_speed_mps = 1.0;
   clamp_negative_velocities(traj_points);
+  set_timestamps(traj_points, 0.1);
+  auto accumulated_velocity_sum = std::accumulate(
+    traj_points.begin(), traj_points.end(), 0.0,
+    [](double sum, const TrajectoryPoint & p) -> double {
+      return sum + p.longitudinal_velocity_mps;
+    });
 
-  // constexpr double nearest_dist_threshold = 2.0;
-  // constexpr double nearest_yaw_threshold = 1.0;  // [rad]
+  std::cerr << "accumulated_velocity_sum: " << accumulated_velocity_sum << std::endl;
+  if (accumulated_velocity_sum < target_pull_out_speed_mps) {
+    std::cerr << "Set initial target velocity" << std::endl;
+    set_initial_target_velocity(traj_points, target_pull_out_speed_mps, 0.1);
+  }
+  traj_points.front().longitudinal_velocity_mps = 1.0;
+  traj_points.back().longitudinal_velocity_mps = 0.0;
+  traj_points.front().acceleration_mps2 = 1.0;
 
-  // // Resample trajectory with ego-velocity based interval distance
-  // auto traj_resampled = smoother_->resampleTrajectory(
+  constexpr double nearest_dist_threshold = 2.0;
+  constexpr double nearest_yaw_threshold = 1.0;  // [rad]
+
+  // Resample trajectory with ego-velocity based interval distance
+  // traj_points = smoother_->resampleTrajectory(
   //   traj_points, current_odometry_ptr_->twist.twist.linear.x, current_odometry_ptr_->pose.pose,
   //   nearest_dist_threshold, nearest_yaw_threshold);
 
-  // const size_t traj_resampled_closest =
-  //   autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
-  //     traj_resampled, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
-  //     nearest_yaw_threshold);
+  const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
+    traj_points, current_odometry_ptr_->pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
 
   // // Clip trajectory from closest point
-  // std::vector<TrajectoryPoint> clipped;
-  // clipped.insert(
-  //   clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
-
+  std::vector<TrajectoryPoint> clipped;
+  clipped.insert(
+    clipped.end(),
+    traj_points.begin() + static_cast<std::vector<TrajectoryPoint>::difference_type>(traj_closest),
+    traj_points.end());
+  traj_points = clipped;
   // // Set maximum acceleration before applying smoother. Depends on acceleration request from
   // // external velocity limit
-  // const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
-  // const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
-  // smoother_->setMaxAccel(smoother_max_acceleration);
-  // smoother_->setMaxJerk(smoother_max_jerk);
+  const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
+  const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
+  smoother_->setMaxAccel(smoother_max_acceleration);
+  smoother_->setMaxJerk(smoother_max_jerk);
 
-  // auto first_point_speed = traj_points.front().longitudinal_velocity_mps;
-  // auto first_point_acc = traj_points.front().acceleration_mps2;
+  auto first_point_speed = traj_points.front().longitudinal_velocity_mps;
+  auto first_point_acc = 1.0;
 
-  // std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
-  // std::vector<TrajectoryPoint> traj_smoothed;
-  // if (!smoother_->apply(
-  //       first_point_speed, first_point_acc, clipped, traj_smoothed, debug_trajectories, false)) {
-  //   RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
-  // }
+  std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
+  if (!smoother_->apply(
+        first_point_speed, first_point_acc, traj_points, traj_points, debug_trajectories, false)) {
+    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+  }
 
   NewTrajectory output_new_traj = input_trajectory;
   output_new_traj.points = traj_points;
-
+  // output_new_traj.points = traj_smoothed;
+  std::cerr << "---------------------------------" << std::endl;
+  size_t i = 0;
   for (auto & point : output_new_traj.points) {
-    point.longitudinal_velocity_mps += 0.1;
-    if (current_odometry_ptr_->twist.twist.linear.x < 2.0) point.acceleration_mps2 = 1.0;
+    std::cerr << "Acc: (" << i++ << ") " << point.acceleration_mps2 << std::endl;
   }
+  std::cerr << "---------------------------------" << std::endl;
 
   return output_new_traj;
 }
@@ -135,18 +176,13 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   traj_pub_->publish(sample_trajectory);
 }
 
-std::vector<TrajectoryPoint> TrajectoryInterpolator::clamp_negative_velocities(
+void TrajectoryInterpolator::clamp_negative_velocities(
   std::vector<TrajectoryPoint> & input_trajectory_array)
 {
   std::vector<TrajectoryPoint> output_trajectory;
-  for (const auto & point : input_trajectory_array) {
-    TrajectoryPoint traj_point = point;
-    if (traj_point.longitudinal_velocity_mps < 0.0) {
-      traj_point.longitudinal_velocity_mps = 0.0;
-    }
-    output_trajectory.push_back(traj_point);
+  for (auto & point : input_trajectory_array) {
+    point.longitudinal_velocity_mps = std::max(0.0f, point.longitudinal_velocity_mps);
   }
-  return output_trajectory;
 }
 
 }  // namespace autoware::trajectory_interpolator

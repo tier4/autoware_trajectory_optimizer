@@ -53,8 +53,14 @@ private:
   NewTrajectory interpolate_trajectory(
     const NewTrajectory & input_trajectory, const Odometry & current_odometry);
 
-  static std::vector<TrajectoryPoint> clamp_negative_velocities(
-    std::vector<TrajectoryPoint> & input_trajectory_array);
+  static void clamp_negative_velocities(std::vector<TrajectoryPoint> & input_trajectory_array);
+
+  static void set_timestamps(
+    std::vector<TrajectoryPoint> & input_trajectory_array, double time_interval_sec);
+
+  static void set_initial_target_velocity(
+    std::vector<TrajectoryPoint> & input_trajectory_array, double target_velocity,
+    double time_interval_sec);
 
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
