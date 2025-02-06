@@ -22,6 +22,7 @@
 
 #include <rclcpp/subscription.hpp>
 
+#include "geometry_msgs/msg/accel_with_covariance_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include <autoware_new_planning_msgs/msg/trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
@@ -40,6 +41,7 @@ using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
+using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
 
 class TrajectoryInterpolator : public rclcpp::Node
@@ -54,6 +56,8 @@ private:
     const NewTrajectory & input_trajectory, const Odometry & current_odometry);
 
   static void clamp_negative_velocities(std::vector<TrajectoryPoint> & input_trajectory_array);
+
+  static void set_max_velocity(std::vector<TrajectoryPoint> & input_trajectory_array);
 
   static void set_timestamps(
     std::vector<TrajectoryPoint> & input_trajectory_array, double time_interval_sec);
@@ -72,8 +76,12 @@ private:
 
   autoware::universe_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
     this, "~/input/odometry"};
+  autoware::universe_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
+    sub_current_acceleration_{this, "~/input/acceleration"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
+  AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;
+
   mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
   std::shared_ptr<JerkFilteredSmoother> smoother_;
 };

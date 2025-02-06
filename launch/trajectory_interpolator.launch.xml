@@ -18,5 +18,6 @@
    <remap from="~/output/traj" to="$(var output_traj)"/>
    <remap from="~/input/traj" to="$(var input_traj)"/>
    <remap from="~/input/odometry" to="/localization/kinematic_state"/>
+   <remap from="~/input/acceleration" to="/localization/acceleration"/>
   </node>
 </launch>
