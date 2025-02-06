@@ -92,10 +92,6 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   clamp_negative_velocities(traj_points);
   set_timestamps(traj_points, 0.1);
 
-  traj_points.front().longitudinal_velocity_mps = 1.0;
-  // traj_points.back().longitudinal_velocity_mps = 0.0;
-  // traj_points.front().acceleration_mps2 = 1.0;
-
   constexpr double nearest_dist_threshold = 0.5;
   constexpr double nearest_yaw_threshold = 1.0;  // [rad]
 
