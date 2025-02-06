@@ -8,6 +8,7 @@
 
   <arg name="input_traj" default="mtr/trajectory"/>
   <arg name="output_traj" default="smoothed/mtr/trajectory"/>
+  <arg name="output_trajectories" default="smoothed/mtr/trajectories"/>
 
   <node pkg="autoware_trajectory_interpolator" exec="autoware_trajectory_interpolator_node" name="trajectory_interpolator_node" output="screen">
     <param from="$(var param_path)" allow_substs="true"/>
@@ -15,7 +16,8 @@
     <param from="$(var jerk_filtered_smoother_param_path)" allow_substs="true"/>
     <param from="$(var velocity_smoother_param_path)" allow_substs="true"/>
     <param from="$(var common_smoother_param_path)" allow_substs="true"/>
-   <remap from="~/output/traj" to="$(var output_traj)"/>
+   <remap from="~/output/trajectory" to="$(var output_traj)"/>
+   <remap from="~/output/trajectories" to="$(var output_trajectories)"/>
    <remap from="~/input/traj" to="$(var input_traj)"/>
    <remap from="~/input/odometry" to="/localization/kinematic_state"/>
    <remap from="~/input/acceleration" to="/localization/acceleration"/>

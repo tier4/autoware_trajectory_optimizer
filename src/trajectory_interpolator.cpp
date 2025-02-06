@@ -38,8 +38,8 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
     "mtr/trajectories", 10,
     std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
   // interface publisher
-  traj_pub_ = create_publisher<Trajectory>("smoothed/mtr/trajectory", 5);
-  trajectories_pub_ = create_publisher<Trajectories>("smoothed/mtr/trajectories", 5);
+  traj_pub_ = create_publisher<Trajectory>("~/output/trajectory", 5);
+  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 5);
 
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
