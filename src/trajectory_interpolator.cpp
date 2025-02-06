@@ -81,8 +81,6 @@ void TrajectoryInterpolator::set_initial_target_velocity(
 NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   const NewTrajectory & input_trajectory, [[maybe_unused]] const Odometry & current_odometry)
 {
-  std::cerr << "---------------------------------" << std::endl;
-
   auto traj_points = input_trajectory.points;
   // guard for invalid trajectory
   traj_points = autoware::motion_utils::removeOverlapPoints(traj_points);
@@ -158,14 +156,6 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
 
   NewTrajectory output_new_traj = input_trajectory;
   output_new_traj.points = traj_points;
-
-  std::cerr << "---------------------------------" << std::endl;
-  size_t i = 0;
-  for (auto & point : output_new_traj.points) {
-    std::cerr << "Acc: (" << i++ << ") " << point.acceleration_mps2 << std::endl;
-  }
-  std::cerr << "---------------------------------" << std::endl;
-
   return output_new_traj;
 }
 
