@@ -27,6 +27,7 @@
 #include <autoware_new_planning_msgs/msg/trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
+#include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <string>
@@ -68,6 +69,7 @@ private:
 
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
+
   // interface publisher
   rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_;  // Rviz debug
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
@@ -78,12 +80,18 @@ private:
     this, "~/input/odometry"};
   autoware::universe_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
     sub_current_acceleration_{this, "~/input/acceleration"};
+  autoware::universe_utils::InterProcessPollingSubscriber<
+    Trajectory, autoware::universe_utils::polling_policy::Newest>
+    sub_previous_trajectory_{this, "~/input/previous_trajectory"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;
+  Trajectory::ConstSharedPtr previous_trajectory_ptr_;
+  Trajectory::ConstSharedPtr previous_output_ptr_;
 
   mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
-  std::shared_ptr<JerkFilteredSmoother> smoother_;
+  std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
+  std::shared_ptr<rclcpp::Time> last_time_{nullptr};
 };
 
 }  // namespace autoware::trajectory_interpolator

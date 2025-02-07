@@ -21,6 +21,8 @@
 #include <autoware/universe_utils/geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
+#include <autoware_new_planning_msgs/msg/detail/trajectories__struct.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <iostream>
@@ -35,11 +37,11 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
 {
   // interface subscriber
   trajectories_sub_ = create_subscription<Trajectories>(
-    "mtr/trajectories", 10,
+    "mtr/trajectories", 1,
     std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
   // interface publisher
-  traj_pub_ = create_publisher<Trajectory>("~/output/trajectory", 5);
-  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 5);
+  traj_pub_ = create_publisher<Trajectory>("~/output/trajectory", 1);
+  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
 
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
@@ -53,6 +55,7 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   constexpr double wheelbase = 2.74;  // vehicle_info.wheel_base_m;
   smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
   smoother_->setWheelBase(wheelbase);
+  last_time_ = std::make_shared<rclcpp::Time>(now());
 }
 
 void TrajectoryInterpolator::set_timestamps(
@@ -122,6 +125,11 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
     traj_points, initial_motion_speed, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
     nearest_yaw_threshold);
 
+  if (traj_points.size() < 2) {
+    RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
+    return input_trajectory;
+  }
+
   const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
     traj_points, current_odometry_ptr_->pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
 
@@ -156,7 +164,30 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 {
   current_odometry_ptr_ = sub_current_odometry_.takeData();
   current_acceleration_ptr_ = sub_current_acceleration_.takeData();
+  previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
 
+  if (previous_trajectory_ptr_) {
+    auto current_time = now();
+    auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
+    std::cerr << "Time diff: " << time_diff << std::endl;
+    if (time_diff < 5.0) {
+      Trajectories output_trajectories;
+      output_trajectories.generator_info = msg->generator_info;
+      NewTrajectory previous_trajectory;
+      previous_trajectory.points = previous_trajectory_ptr_->points;
+      previous_trajectory.header = msg->trajectories.front().header;
+      previous_trajectory.generator_id = msg->trajectories.front().generator_id;
+      output_trajectories.trajectories.push_back(previous_trajectory);
+      std::cerr << " output_trajectories.trajectories.size(): "
+                << output_trajectories.trajectories.size() << std::endl;
+      trajectories_pub_->publish(output_trajectories);
+      // traj_pub_->publish(*previous_trajectory_ptr_);
+      return;
+    }
+
+    last_time_ = std::make_shared<rclcpp::Time>(now());
+    std::cerr << "More than 5 secs passed\n";
+  }
   if (!current_odometry_ptr_) {
     RCLCPP_ERROR(get_logger(), "No current odometry data");
     return;
@@ -167,6 +198,15 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   for (auto & trajectory : msg->trajectories) {
     auto out_trajectory = interpolate_trajectory(trajectory, *current_odometry_ptr_);
     output_trajectories.trajectories.push_back(out_trajectory);
+  }
+
+  if (previous_trajectory_ptr_) {
+    NewTrajectory previous_trajectory;
+    // Here we are just copying from the input, in the future the prev traj should have its own id
+    previous_trajectory.generator_id = output_trajectories.trajectories.front().generator_id;
+    previous_trajectory.header = previous_trajectory_ptr_->header;
+    previous_trajectory.points = previous_trajectory_ptr_->points;
+    output_trajectories.trajectories.push_back(previous_trajectory);
   }
 
   trajectories_pub_->publish(output_trajectories);
