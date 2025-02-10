@@ -80,9 +80,8 @@ private:
     this, "~/input/odometry"};
   autoware::universe_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
     sub_current_acceleration_{this, "~/input/acceleration"};
-  autoware::universe_utils::InterProcessPollingSubscriber<
-    Trajectory, autoware::universe_utils::polling_policy::Newest>
-    sub_previous_trajectory_{this, "~/input/previous_trajectory"};
+  autoware::universe_utils::InterProcessPollingSubscriber<Trajectory> sub_previous_trajectory_{
+    this, "~/input/previous_trajectory"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;

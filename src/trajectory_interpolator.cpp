@@ -170,7 +170,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     std::cerr << "Time diff: " << time_diff << std::endl;
-    if (time_diff < 5.0) {
+    if (time_diff < 0.25) {
       Trajectories output_trajectories;
       output_trajectories.generator_info = msg->generator_info;
       NewTrajectory previous_trajectory;
@@ -202,7 +202,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 
   if (previous_trajectory_ptr_) {
     NewTrajectory previous_trajectory;
-    // Here we are just copying from the input, in the future the prev traj should have its own id
+    // Here we are just copying from the input, in the future the prev traj should have its own
+
     previous_trajectory.generator_id = output_trajectories.trajectories.front().generator_id;
     previous_trajectory.header = previous_trajectory_ptr_->header;
     previous_trajectory.points = previous_trajectory_ptr_->points;
