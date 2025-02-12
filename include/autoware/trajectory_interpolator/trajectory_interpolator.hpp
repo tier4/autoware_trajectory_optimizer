@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
+#include "autoware/trajectory_interpolator/trajectory_interpolator_params.hpp"
 #include "autoware/universe_utils/ros/polling_subscriber.hpp"
 #include "autoware/universe_utils/system/time_keeper.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
@@ -27,6 +28,7 @@
 #include <autoware_new_planning_msgs/msg/trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
+#include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <string>
@@ -52,24 +54,38 @@ public:
 private:
   void on_traj(const Trajectories::ConstSharedPtr msg);
 
+  void set_up_params();
+
+  /**
+   * @brief Callback for parameter updates
+   * @param parameters Vector of updated parameters
+   * @return Set parameters result
+   */
+  rcl_interfaces::msg::SetParametersResult on_parameter(
+    const std::vector<rclcpp::Parameter> & parameters);
+
   NewTrajectory interpolate_trajectory(
-    const NewTrajectory & input_trajectory, const Odometry & current_odometry);
+    const NewTrajectory & input_trajectory, const Odometry & current_odometry,
+    const AccelWithCovarianceStamped & current_acceleration);
 
-  static void clamp_negative_velocities(std::vector<TrajectoryPoint> & input_trajectory_array);
+  void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
 
-  static void set_max_velocity(std::vector<TrajectoryPoint> & input_trajectory_array);
+  void filter_velocity(
+    std::vector<TrajectoryPoint> & input_trajectory, const double initial_motion_speed,
+    const double initial_motion_acc, const double nearest_dist_threshold,
+    const double nearest_yaw_threshold);
 
-  static void set_timestamps(
-    std::vector<TrajectoryPoint> & input_trajectory_array, double time_interval_sec);
+  static void clamp_velocities(
+    std::vector<TrajectoryPoint> & input_trajectory_array, float min_velocity,
+    float min_acceleration);
 
-  static void set_initial_target_velocity(
-    std::vector<TrajectoryPoint> & input_trajectory_array, double target_velocity,
-    double time_interval_sec);
+  static void set_max_velocity(
+    std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity);
 
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
+
   // interface publisher
-  rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_;  // Rviz debug
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
   rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
     debug_processing_time_detail_;
@@ -78,12 +94,20 @@ private:
     this, "~/input/odometry"};
   autoware::universe_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
     sub_current_acceleration_{this, "~/input/acceleration"};
+  autoware::universe_utils::InterProcessPollingSubscriber<Trajectory> sub_previous_trajectory_{
+    this, "~/input/previous_trajectory"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;
+  Trajectory::ConstSharedPtr previous_trajectory_ptr_;
+  Trajectory::ConstSharedPtr previous_output_ptr_;
 
   mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
-  std::shared_ptr<JerkFilteredSmoother> smoother_;
+  std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
+  std::shared_ptr<rclcpp::Time> last_time_{nullptr};
+
+  TrajectoryInterpolatorParams params_;
+  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 };
 
 }  // namespace autoware::trajectory_interpolator
