@@ -56,18 +56,19 @@ private:
   NewTrajectory interpolate_trajectory(
     const NewTrajectory & input_trajectory, const Odometry & current_odometry);
 
+  void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
+
+  void filter_velocity(
+    std::vector<TrajectoryPoint> & input_trajectory, const double initial_motion_speed,
+    const double initial_motion_acc, const double nearest_dist_threshold,
+    const double nearest_yaw_threshold);
+
   static void clamp_velocities(
     std::vector<TrajectoryPoint> & input_trajectory_array, float min_velocity,
     float min_acceleration);
 
-  static void set_max_velocity(std::vector<TrajectoryPoint> & input_trajectory_array);
-
-  static void set_timestamps(
-    std::vector<TrajectoryPoint> & input_trajectory_array, double time_interval_sec);
-
-  static void set_initial_target_velocity(
-    std::vector<TrajectoryPoint> & input_trajectory_array, double target_velocity,
-    double time_interval_sec, double velocity_offset);
+  static void set_max_velocity(
+    std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity);
 
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
