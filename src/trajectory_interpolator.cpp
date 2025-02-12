@@ -15,10 +15,13 @@
 #include "autoware/trajectory_interpolator/trajectory_interpolator.hpp"
 
 #include "autoware/motion_utils/resample/resample.hpp"
+#include "autoware/trajectory_interpolator/trajectory_interpolator_params.hpp"
+#include "autoware/universe_utils/ros/parameter.hpp"
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/universe_utils/geometry/geometry.hpp>
+#include <autoware/universe_utils/ros/update_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_new_planning_msgs/msg/detail/trajectories__struct.hpp>
@@ -36,14 +39,6 @@ namespace autoware::trajectory_interpolator
 TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & options)
 : Node("trajectory_interpolator", options)
 {
-  // interface subscriber
-  trajectories_sub_ = create_subscription<Trajectories>(
-    "mtr/trajectories", 1,
-    std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
-  // interface publisher
-  traj_pub_ = create_publisher<Trajectory>("~/output/trajectory", 1);
-  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
-
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
   debug_processing_time_detail_ = create_publisher<autoware::universe_utils::ProcessingTimeDetail>(
@@ -63,6 +58,54 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   smoother_->setMaxAccel(smoother_max_acceleration);
   smoother_->setMaxJerk(smoother_max_jerk);
   last_time_ = std::make_shared<rclcpp::Time>(now());
+  set_up_params();
+  // Parameter Callback
+  set_param_res_ = add_on_set_parameters_callback(
+    std::bind(&TrajectoryInterpolator::on_parameter, this, std::placeholders::_1));
+
+  // interface subscriber
+  trajectories_sub_ = create_subscription<Trajectories>(
+    "mtr/trajectories", 1,
+    std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
+  // interface publisher
+  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
+}
+
+rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  using autoware::universe_utils::updateParam;
+  TrajectoryInterpolatorParams params;
+
+  updateParam<double>(parameters, "keep_last_trajectory_s", params.keep_last_trajectory_s);
+  updateParam<double>(parameters, "nearest_dist_threshold_m", params.nearest_dist_threshold_m);
+  updateParam<double>(parameters, "nearest_yaw_threshold_rad", params.nearest_yaw_threshold_rad);
+  updateParam<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
+  updateParam<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
+  updateParam<double>(parameters, "max_speed_mps", params.max_speed_mps);
+
+  params_ = params;
+
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+  result.reason = "success";
+  return result;
+}
+
+void TrajectoryInterpolator::set_up_params()
+{
+  using autoware::universe_utils::getOrDeclareParameter;
+
+  params_.keep_last_trajectory_s = getOrDeclareParameter<double>(*this, "keep_last_trajectory_s");
+  params_.nearest_dist_threshold_m =
+    getOrDeclareParameter<double>(*this, "nearest_dist_threshold_m");
+  params_.nearest_yaw_threshold_rad =
+    getOrDeclareParameter<double>(*this, "nearest_yaw_threshold_rad");
+  params_.target_pull_out_speed_mps =
+    getOrDeclareParameter<double>(*this, "target_pull_out_speed_mps");
+  params_.target_pull_out_acc_mps2 =
+    getOrDeclareParameter<double>(*this, "target_pull_out_acc_mps2");
+  params_.max_speed_mps = getOrDeclareParameter<double>(*this, "max_speed_mps");
 }
 
 void TrajectoryInterpolator::remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory)
@@ -137,35 +180,36 @@ void TrajectoryInterpolator::filter_velocity(
 }
 
 NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
-  const NewTrajectory & input_trajectory, [[maybe_unused]] const Odometry & current_odometry)
+  const NewTrajectory & input_trajectory, const Odometry & current_odometry,
+  const AccelWithCovarianceStamped & current_acceleration)
 {
   auto traj_points = input_trajectory.points;
 
   // Remove overlap points and wrong orientation points
   remove_invalid_points(traj_points);
 
-  // TODO(Daniel): Add parameters to the node
-  constexpr double nearest_dist_threshold = 0.5;
-  constexpr double nearest_yaw_threshold = 1.0;  // [rad]
-
-  constexpr double target_pull_out_speed_mps = 1.0;
-  constexpr double target_pull_out_acc_mps2 = 1.0;
-
-  constexpr double max_speed_mps = 5.0;
+  const double & nearest_dist_threshold = params_.nearest_dist_threshold_m;
+  const double & nearest_yaw_threshold = params_.nearest_yaw_threshold_rad;
+  const double & target_pull_out_speed_mps = params_.target_pull_out_speed_mps;
+  const double & target_pull_out_acc_mps2 = params_.target_pull_out_acc_mps2;
+  const double & max_speed_mps = params_.max_speed_mps;
 
   const auto current_speed = current_odometry.twist.twist.linear.x;
-  const auto current_acceleration = current_acceleration_ptr_->accel.accel.linear.x;
+  const auto current_linear_acceleration = current_acceleration.accel.accel.linear.x;
   auto initial_motion_speed =
     (current_speed > target_pull_out_speed_mps) ? current_speed : target_pull_out_speed_mps;
-  auto initial_motion_acc =
-    (current_speed > target_pull_out_speed_mps) ? current_acceleration : target_pull_out_acc_mps2;
+  auto initial_motion_acc = (current_speed > target_pull_out_speed_mps)
+                              ? current_linear_acceleration
+                              : target_pull_out_acc_mps2;
 
   // Set engage speed and acceleration
   if (current_speed < target_pull_out_speed_mps) {
-    clamp_velocities(traj_points, initial_motion_speed, initial_motion_acc);
+    clamp_velocities(
+      traj_points, static_cast<float>(initial_motion_speed),
+      static_cast<float>(initial_motion_acc));
   }
   // limit ego speed
-  set_max_velocity(traj_points, max_speed_mps);
+  set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
   // Smooth velocity profile
   filter_velocity(
     traj_points, initial_motion_speed, initial_motion_acc, nearest_dist_threshold,
@@ -189,10 +233,12 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   current_acceleration_ptr_ = sub_current_acceleration_.takeData();
   previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
 
+  const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
+
   if (previous_trajectory_ptr_) {
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
-    if (time_diff < 0.5) {
+    if (time_diff < keep_last_trajectory_s) {
       Trajectories output_trajectories;
       output_trajectories.generator_info = msg->generator_info;
       NewTrajectory previous_trajectory;
@@ -201,13 +247,12 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
       previous_trajectory.generator_id = msg->trajectories.front().generator_id;
       output_trajectories.trajectories.push_back(previous_trajectory);
       trajectories_pub_->publish(output_trajectories);
-      // traj_pub_->publish(*previous_trajectory_ptr_);
       return;
     }
 
     last_time_ = std::make_shared<rclcpp::Time>(now());
   }
-  if (!current_odometry_ptr_) {
+  if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
     RCLCPP_ERROR(get_logger(), "No current odometry data");
     return;
   }
@@ -215,7 +260,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   Trajectories output_trajectories = *msg;
   output_trajectories.trajectories.clear();
   for (auto & trajectory : msg->trajectories) {
-    auto out_trajectory = interpolate_trajectory(trajectory, *current_odometry_ptr_);
+    auto out_trajectory =
+      interpolate_trajectory(trajectory, *current_odometry_ptr_, *current_acceleration_ptr_);
     output_trajectories.trajectories.push_back(out_trajectory);
   }
 
@@ -230,11 +276,6 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   }
 
   trajectories_pub_->publish(output_trajectories);
-
-  Trajectory sample_trajectory;
-  sample_trajectory.points = output_trajectories.trajectories.front().points;
-  sample_trajectory.header = output_trajectories.trajectories.front().header;
-  traj_pub_->publish(sample_trajectory);
 }
 
 void TrajectoryInterpolator::clamp_velocities(

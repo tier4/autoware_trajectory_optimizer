@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
+#include "autoware/trajectory_interpolator/trajectory_interpolator_params.hpp"
 #include "autoware/universe_utils/ros/polling_subscriber.hpp"
 #include "autoware/universe_utils/system/time_keeper.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
@@ -53,8 +54,19 @@ public:
 private:
   void on_traj(const Trajectories::ConstSharedPtr msg);
 
+  void set_up_params();
+
+  /**
+   * @brief Callback for parameter updates
+   * @param parameters Vector of updated parameters
+   * @return Set parameters result
+   */
+  rcl_interfaces::msg::SetParametersResult on_parameter(
+    const std::vector<rclcpp::Parameter> & parameters);
+
   NewTrajectory interpolate_trajectory(
-    const NewTrajectory & input_trajectory, const Odometry & current_odometry);
+    const NewTrajectory & input_trajectory, const Odometry & current_odometry,
+    const AccelWithCovarianceStamped & current_acceleration);
 
   void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
 
@@ -74,7 +86,6 @@ private:
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
 
   // interface publisher
-  rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_;  // Rviz debug
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
   rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
     debug_processing_time_detail_;
@@ -94,6 +105,9 @@ private:
   mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
   std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
   std::shared_ptr<rclcpp::Time> last_time_{nullptr};
+
+  TrajectoryInterpolatorParams params_;
+  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 };
 
 }  // namespace autoware::trajectory_interpolator
