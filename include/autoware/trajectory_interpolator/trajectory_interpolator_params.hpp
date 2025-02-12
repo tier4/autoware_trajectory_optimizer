@@ -25,6 +25,8 @@ struct TrajectoryInterpolatorParams
   double target_pull_out_speed_mps{0.0};
   double target_pull_out_acc_mps2{0.0};
   double max_speed_mps{0.0};
+  bool publish_last_trajectory{false};
+  bool keep_last_trajectory{false};
 };
 }  // namespace autoware::trajectory_interpolator
 #endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_PARAMS_HPP_

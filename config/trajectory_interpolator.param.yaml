@@ -6,3 +6,5 @@
     target_pull_out_speed_mps: 1.0  # [mps]
     target_pull_out_acc_mps2: 1.0  # [mps2]
     max_speed_mps: 5.0  # [mps]
+    publish_last_trajectory: true
+    keep_last_trajectory: true

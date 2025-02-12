@@ -83,6 +83,8 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   updateParam<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
   updateParam<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
   updateParam<double>(parameters, "max_speed_mps", params.max_speed_mps);
+  updateParam<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
+  updateParam<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
 
   params_ = params;
 
@@ -106,6 +108,9 @@ void TrajectoryInterpolator::set_up_params()
   params_.target_pull_out_acc_mps2 =
     getOrDeclareParameter<double>(*this, "target_pull_out_acc_mps2");
   params_.max_speed_mps = getOrDeclareParameter<double>(*this, "max_speed_mps");
+
+  params_.publish_last_trajectory = getOrDeclareParameter<bool>(*this, "publish_last_trajectory");
+  params_.keep_last_trajectory = getOrDeclareParameter<bool>(*this, "keep_last_trajectory");
 }
 
 void TrajectoryInterpolator::remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory)
@@ -235,7 +240,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
 
-  if (previous_trajectory_ptr_) {
+  if (previous_trajectory_ptr_ && params_.keep_last_trajectory) {
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     if (time_diff < keep_last_trajectory_s) {
@@ -265,10 +270,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
     output_trajectories.trajectories.push_back(out_trajectory);
   }
 
-  if (previous_trajectory_ptr_) {
+  if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {
     NewTrajectory previous_trajectory;
-    // Here we are just copying from the input, in the future the prev traj should have its own
-
     previous_trajectory.generator_id = output_trajectories.trajectories.front().generator_id;
     previous_trajectory.header = previous_trajectory_ptr_->header;
     previous_trajectory.points = previous_trajectory_ptr_->points;
