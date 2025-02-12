@@ -70,11 +70,11 @@ void TrajectoryInterpolator::set_timestamps(
 
 void TrajectoryInterpolator::set_initial_target_velocity(
   std::vector<TrajectoryPoint> & input_trajectory_array, double target_velocity,
-  double time_interval_sec)
+  double time_interval_sec, double velocity_offset)
 {
   auto total_time = time_interval_sec * input_trajectory_array.size();
-  auto acceleration = target_velocity / total_time;
-  auto velocity = 0.0;
+  auto acceleration = (target_velocity - velocity_offset) / total_time;
+  auto velocity = velocity_offset;
   for (auto & point : input_trajectory_array) {
     point.longitudinal_velocity_mps = velocity;
     velocity += acceleration * time_interval_sec;
@@ -85,15 +85,30 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   const NewTrajectory & input_trajectory, [[maybe_unused]] const Odometry & current_odometry)
 {
   auto traj_points = input_trajectory.points;
-  // guard for invalid trajectory
-  traj_points = autoware::motion_utils::removeOverlapPoints(traj_points);
-  if (traj_points.size() < 2) {
-    RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
-    return input_trajectory;
-  }
 
-  clamp_negative_velocities(traj_points);
-  set_timestamps(traj_points, 0.1);
+  // Remove overlap points and wrong orientation points
+  {
+    traj_points = autoware::motion_utils::removeOverlapPoints(traj_points);
+    if (traj_points.size() < 2) {
+      RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
+      return input_trajectory;
+    }
+
+    // const bool is_driving_forward =
+    //   autoware::universe_utils::isDrivingForward(traj_points.at(0), traj_points.at(1));
+    const bool is_driving_forward = true;
+    autoware::motion_utils::insertOrientation(traj_points, is_driving_forward);
+
+    autoware::motion_utils::removeFirstInvalidOrientationPoints(traj_points);
+    size_t previous_size{traj_points.size()};
+    do {
+      previous_size = traj_points.size();
+      // Set the azimuth orientation to the next point at each point
+      autoware::motion_utils::insertOrientation(traj_points, is_driving_forward);
+      // Use azimuth orientation to remove points in reverse order
+      autoware::motion_utils::removeFirstInvalidOrientationPoints(traj_points);
+    } while (previous_size != traj_points.size());
+  }
 
   constexpr double nearest_dist_threshold = 0.5;
   constexpr double nearest_yaw_threshold = 1.0;  // [rad]
@@ -101,59 +116,67 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
   constexpr double target_pull_out_speed_mps = 1.0;
   constexpr double target_pull_out_acc_mps2 = 1.0;
 
+  const auto current_speed = current_odometry.twist.twist.linear.x;
+  const auto current_acceleration = current_acceleration_ptr_->accel.accel.linear.x;
   auto initial_motion_speed =
-    (current_odometry_ptr_->twist.twist.linear.x > target_pull_out_speed_mps)
-      ? current_odometry_ptr_->twist.twist.linear.x
-      : target_pull_out_speed_mps;
+    (current_speed > target_pull_out_speed_mps) ? current_speed : target_pull_out_speed_mps;
   auto initial_motion_acc =
-    (current_odometry_ptr_->twist.twist.linear.x > target_pull_out_speed_mps)
-      ? current_acceleration_ptr_->accel.accel.linear.x
-      : target_pull_out_acc_mps2;
+    (current_speed > target_pull_out_speed_mps) ? current_acceleration : target_pull_out_acc_mps2;
 
-  // Lateral acceleration limit
-  constexpr bool enable_smooth_limit = true;
-  constexpr bool use_resampling = true;
-
-  traj_points = smoother_->applyLateralAccelerationFilter(
-    traj_points, initial_motion_speed, initial_motion_acc, enable_smooth_limit, use_resampling);
-
-  // Steering angle rate limit (Note: set use_resample = false since it is resampled above)
-  traj_points = smoother_->applySteeringRateLimit(traj_points, false);
-  // Resample trajectory with ego-velocity based interval distance
-
-  traj_points = smoother_->resampleTrajectory(
-    traj_points, initial_motion_speed, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
-    nearest_yaw_threshold);
-
-  if (traj_points.size() < 2) {
-    RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
-    return input_trajectory;
+  if (current_speed < target_pull_out_speed_mps) {
+    clamp_velocities(traj_points, initial_motion_speed, initial_motion_acc);
   }
 
-  const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
-    traj_points, current_odometry_ptr_->pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
+  // Smooth velocity profile
+  {
+    // Lateral acceleration limit
+    constexpr bool enable_smooth_limit = true;
+    constexpr bool use_resampling = true;
 
-  // // Clip trajectory from closest point
-  std::vector<TrajectoryPoint> clipped;
-  clipped.insert(
-    clipped.end(),
-    traj_points.begin() + static_cast<std::vector<TrajectoryPoint>::difference_type>(traj_closest),
-    traj_points.end());
-  traj_points = clipped;
+    traj_points = smoother_->applyLateralAccelerationFilter(
+      traj_points, initial_motion_speed, initial_motion_acc, enable_smooth_limit, use_resampling);
 
-  // // Set maximum acceleration before applying smoother. Depends on acceleration request from
-  // // external velocity limit
-  const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
-  const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
-  smoother_->setMaxAccel(smoother_max_acceleration);
-  smoother_->setMaxJerk(smoother_max_jerk);
+    // Steering angle rate limit (Note: set use_resample = false since it is resampled above)
+    traj_points = smoother_->applySteeringRateLimit(traj_points, false);
+    // Resample trajectory with ego-velocity based interval distance
 
-  std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
-  if (!smoother_->apply(
-        initial_motion_speed, initial_motion_acc, traj_points, traj_points, debug_trajectories,
-        false)) {
-    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+    traj_points = smoother_->resampleTrajectory(
+      traj_points, initial_motion_speed, current_odometry_ptr_->pose.pose, nearest_dist_threshold,
+      nearest_yaw_threshold);
+
+    if (traj_points.size() < 2) {
+      RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
+      return input_trajectory;
+    }
+
+    const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
+      traj_points, current_odometry_ptr_->pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
+
+    // // Clip trajectory from closest point
+    std::vector<TrajectoryPoint> clipped;
+    clipped.insert(
+      clipped.end(),
+      traj_points.begin() +
+        static_cast<std::vector<TrajectoryPoint>::difference_type>(traj_closest),
+      traj_points.end());
+    traj_points = clipped;
+
+    // // Set maximum acceleration before applying smoother. Depends on acceleration request from
+    // // external velocity limit
+    const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
+    const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
+    smoother_->setMaxAccel(smoother_max_acceleration);
+    smoother_->setMaxJerk(smoother_max_jerk);
+
+    std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
+    if (!smoother_->apply(
+          initial_motion_speed, initial_motion_acc, traj_points, traj_points, debug_trajectories,
+          false)) {
+      RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+    }
   }
+  // Recalculate timestamps
+  motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);
 
   NewTrajectory output_new_traj = input_trajectory;
   output_new_traj.points = traj_points;
@@ -169,8 +192,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   if (previous_trajectory_ptr_) {
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
-    std::cerr << "Time diff: " << time_diff << std::endl;
-    if (time_diff < 0.25) {
+    if (time_diff < 0.5) {
       Trajectories output_trajectories;
       output_trajectories.generator_info = msg->generator_info;
       NewTrajectory previous_trajectory;
@@ -178,15 +200,12 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
       previous_trajectory.header = msg->trajectories.front().header;
       previous_trajectory.generator_id = msg->trajectories.front().generator_id;
       output_trajectories.trajectories.push_back(previous_trajectory);
-      std::cerr << " output_trajectories.trajectories.size(): "
-                << output_trajectories.trajectories.size() << std::endl;
       trajectories_pub_->publish(output_trajectories);
       // traj_pub_->publish(*previous_trajectory_ptr_);
       return;
     }
 
     last_time_ = std::make_shared<rclcpp::Time>(now());
-    std::cerr << "More than 5 secs passed\n";
   }
   if (!current_odometry_ptr_) {
     RCLCPP_ERROR(get_logger(), "No current odometry data");
@@ -218,14 +237,15 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   traj_pub_->publish(sample_trajectory);
 }
 
-void TrajectoryInterpolator::clamp_negative_velocities(
-  std::vector<TrajectoryPoint> & input_trajectory_array)
+void TrajectoryInterpolator::clamp_velocities(
+  std::vector<TrajectoryPoint> & input_trajectory_array, float min_velocity, float min_acceleration)
 {
-  input_trajectory_array.erase(
-    std::remove_if(
-      input_trajectory_array.begin(), input_trajectory_array.end(),
-      [](const TrajectoryPoint & point) { return point.longitudinal_velocity_mps < 0.0; }),
-    input_trajectory_array.end());
+  std::for_each(
+    input_trajectory_array.begin(), input_trajectory_array.end(),
+    [min_velocity, min_acceleration](TrajectoryPoint & point) {
+      point.longitudinal_velocity_mps = std::max(point.longitudinal_velocity_mps, min_velocity);
+      point.acceleration_mps2 = std::max(point.acceleration_mps2, min_acceleration);
+    });
 }
 
 void TrajectoryInterpolator::set_max_velocity(std::vector<TrajectoryPoint> & input_trajectory_array)
