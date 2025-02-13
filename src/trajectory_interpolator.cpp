@@ -114,7 +114,7 @@ void TrajectoryInterpolator::set_up_params()
 }
 
 void TrajectoryInterpolator::remove_close_proximity_points(
-  std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist)
+  TrajectoryPoints & input_trajectory_array, const double min_dist)
 {
   if (std::size(input_trajectory_array) < 2) {
     return;
@@ -132,7 +132,7 @@ void TrajectoryInterpolator::remove_close_proximity_points(
     input_trajectory_array.end());
 }
 
-void TrajectoryInterpolator::remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory)
+void TrajectoryInterpolator::remove_invalid_points(TrajectoryPoints & input_trajectory)
 {
   if (input_trajectory.size() < 2) {
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
@@ -156,7 +156,7 @@ void TrajectoryInterpolator::remove_invalid_points(std::vector<TrajectoryPoint> 
 }
 
 void TrajectoryInterpolator::filter_velocity(
-  std::vector<TrajectoryPoint> & input_trajectory, const double initial_motion_speed,
+  TrajectoryPoints & input_trajectory, const double initial_motion_speed,
   const double initial_motion_acc, const double nearest_dist_threshold,
   const double nearest_yaw_threshold)
 {
@@ -186,15 +186,14 @@ void TrajectoryInterpolator::filter_velocity(
     nearest_yaw_threshold);
 
   // // Clip trajectory from closest point
-  std::vector<TrajectoryPoint> clipped;
+  TrajectoryPoints clipped;
   clipped.insert(
     clipped.end(),
-    input_trajectory.begin() +
-      static_cast<std::vector<TrajectoryPoint>::difference_type>(traj_closest),
+    input_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(traj_closest),
     input_trajectory.end());
   input_trajectory = clipped;
 
-  std::vector<std::vector<TrajectoryPoint> > debug_trajectories;
+  std::vector<TrajectoryPoints> debug_trajectories;
   if (!smoother_->apply(
         initial_motion_speed, initial_motion_acc, input_trajectory, input_trajectory,
         debug_trajectories, false)) {
@@ -203,7 +202,7 @@ void TrajectoryInterpolator::filter_velocity(
 }
 
 void TrajectoryInterpolator::interpolate_trajectory(
-  std::vector<TrajectoryPoint> & traj_points, const Odometry & current_odometry,
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
   const AccelWithCovarianceStamped & current_acceleration)
 {
   // Remove overlap points and wrong orientation points
@@ -295,7 +294,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 }
 
 void TrajectoryInterpolator::clamp_velocities(
-  std::vector<TrajectoryPoint> & input_trajectory_array, float min_velocity, float min_acceleration)
+  TrajectoryPoints & input_trajectory_array, float min_velocity, float min_acceleration)
 {
   std::for_each(
     input_trajectory_array.begin(), input_trajectory_array.end(),
@@ -306,7 +305,7 @@ void TrajectoryInterpolator::clamp_velocities(
 }
 
 void TrajectoryInterpolator::set_max_velocity(
-  std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity)
+  TrajectoryPoints & input_trajectory_array, const float max_velocity)
 {
   std::for_each(
     input_trajectory_array.begin(), input_trajectory_array.end(),

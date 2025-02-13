@@ -45,6 +45,7 @@ using autoware_planning_msgs::msg::TrajectoryPoint;
 using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
+using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 class TrajectoryInterpolator : public rclcpp::Node
 {
@@ -84,9 +85,9 @@ private:
 
   static void remove_close_proximity_points(
     std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist = 1E-2);
+
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
-
   // interface publisher
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
   rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
