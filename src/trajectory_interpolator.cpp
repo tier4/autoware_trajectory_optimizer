@@ -113,14 +113,32 @@ void TrajectoryInterpolator::set_up_params()
   params_.keep_last_trajectory = getOrDeclareParameter<bool>(*this, "keep_last_trajectory");
 }
 
+void TrajectoryInterpolator::remove_close_proximity_points(
+  std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist)
+{
+  if (std::size(input_trajectory_array) < 2) {
+    return;
+  }
+
+  input_trajectory_array.erase(
+    std::remove_if(
+      std::next(input_trajectory_array.begin()),  // Start from second element
+      input_trajectory_array.end(),
+      [&](const TrajectoryPoint & point) {
+        const auto prev_it = std::prev(&point);
+        const auto dist = autoware::universe_utils::calcDistance2d(point, *prev_it);
+        return dist < min_dist;
+      }),
+    input_trajectory_array.end());
+}
+
 void TrajectoryInterpolator::remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory)
 {
-  input_trajectory = autoware::motion_utils::removeOverlapPoints(input_trajectory);
   if (input_trajectory.size() < 2) {
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
     return;
   }
-
+  remove_close_proximity_points(input_trajectory, 1E-2);
   // const bool is_driving_forward =
   //   autoware::universe_utils::isDrivingForward(input_trajectory.at(0), input_trajectory.at(1));
   const bool is_driving_forward = true;
@@ -184,14 +202,17 @@ void TrajectoryInterpolator::filter_velocity(
   }
 }
 
-NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
-  const NewTrajectory & input_trajectory, const Odometry & current_odometry,
+void TrajectoryInterpolator::interpolate_trajectory(
+  std::vector<TrajectoryPoint> & traj_points, const Odometry & current_odometry,
   const AccelWithCovarianceStamped & current_acceleration)
 {
-  auto traj_points = input_trajectory.points;
-
   // Remove overlap points and wrong orientation points
   remove_invalid_points(traj_points);
+
+  if (traj_points.size() < 2) {
+    RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
+    return;
+  }
 
   const double & nearest_dist_threshold = params_.nearest_dist_threshold_m;
   const double & nearest_yaw_threshold = params_.nearest_yaw_threshold_rad;
@@ -224,12 +245,8 @@ NewTrajectory TrajectoryInterpolator::interpolate_trajectory(
 
   if (traj_points.size() < 2) {
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
-    return input_trajectory;
+    return;
   }
-
-  NewTrajectory output_new_traj = input_trajectory;
-  output_new_traj.points = traj_points;
-  return output_new_traj;
 }
 
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
@@ -240,17 +257,20 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
 
+  auto create_output_trajectory_from_past = [&]() {
+    NewTrajectory previous_trajectory;
+    previous_trajectory.points = previous_trajectory_ptr_->points;
+    previous_trajectory.header = msg->trajectories.front().header;
+    previous_trajectory.generator_id = msg->trajectories.front().generator_id;
+    return previous_trajectory;
+  };
+
   if (previous_trajectory_ptr_ && params_.keep_last_trajectory) {
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     if (time_diff < keep_last_trajectory_s) {
       Trajectories output_trajectories;
-      output_trajectories.generator_info = msg->generator_info;
-      NewTrajectory previous_trajectory;
-      previous_trajectory.points = previous_trajectory_ptr_->points;
-      previous_trajectory.header = msg->trajectories.front().header;
-      previous_trajectory.generator_id = msg->trajectories.front().generator_id;
-      output_trajectories.trajectories.push_back(previous_trajectory);
+      output_trajectories.trajectories.push_back(create_output_trajectory_from_past());
       trajectories_pub_->publish(output_trajectories);
       return;
     }
@@ -263,19 +283,12 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   }
 
   Trajectories output_trajectories = *msg;
-  output_trajectories.trajectories.clear();
-  for (auto & trajectory : msg->trajectories) {
-    auto out_trajectory =
-      interpolate_trajectory(trajectory, *current_odometry_ptr_, *current_acceleration_ptr_);
-    output_trajectories.trajectories.push_back(out_trajectory);
+  for (auto & trajectory : output_trajectories.trajectories) {
+    interpolate_trajectory(trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_);
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {
-    NewTrajectory previous_trajectory;
-    previous_trajectory.generator_id = output_trajectories.trajectories.front().generator_id;
-    previous_trajectory.header = previous_trajectory_ptr_->header;
-    previous_trajectory.points = previous_trajectory_ptr_->points;
-    output_trajectories.trajectories.push_back(previous_trajectory);
+    output_trajectories.trajectories.push_back(create_output_trajectory_from_past());
   }
 
   trajectories_pub_->publish(output_trajectories);
