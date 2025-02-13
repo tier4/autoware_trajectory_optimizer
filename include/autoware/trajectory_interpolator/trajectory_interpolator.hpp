@@ -64,8 +64,8 @@ private:
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters);
 
-  NewTrajectory interpolate_trajectory(
-    const NewTrajectory & input_trajectory, const Odometry & current_odometry,
+  void interpolate_trajectory(
+    std::vector<TrajectoryPoint> & traj_points, const Odometry & current_odometry,
     const AccelWithCovarianceStamped & current_acceleration);
 
   void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
@@ -82,6 +82,8 @@ private:
   static void set_max_velocity(
     std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity);
 
+  static void remove_close_proximity_points(
+    std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist = 1E-2);
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
 
