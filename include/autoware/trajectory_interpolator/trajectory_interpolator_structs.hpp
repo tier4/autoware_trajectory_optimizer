@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_PARAMS_HPP_
-#define AUTOWARE__TRAJECTORY_INTERPOLATOR_PARAMS_HPP_
+#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
+#define AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
 
 namespace autoware::trajectory_interpolator
 {
+
+struct InitialMotion
+{
+  double speed_mps{0.0};
+  double acc_mps2{0.0};
+};
 struct TrajectoryInterpolatorParams
 {
   double keep_last_trajectory_s{0.0};
@@ -29,4 +35,4 @@ struct TrajectoryInterpolatorParams
   bool keep_last_trajectory{false};
 };
 }  // namespace autoware::trajectory_interpolator
-#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_PARAMS_HPP_
+#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_

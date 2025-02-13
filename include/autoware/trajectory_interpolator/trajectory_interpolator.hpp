@@ -1,4 +1,4 @@
-// Copyright 2023 TIER IV, Inc.
+// Copyright 2025 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
-#include "autoware/trajectory_interpolator/trajectory_interpolator_params.hpp"
+#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 #include "autoware/universe_utils/ros/polling_subscriber.hpp"
 #include "autoware/universe_utils/system/time_keeper.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
@@ -45,6 +45,7 @@ using autoware_planning_msgs::msg::TrajectoryPoint;
 using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
+using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 class TrajectoryInterpolator : public rclcpp::Node
 {
@@ -53,7 +54,6 @@ public:
 
 private:
   void on_traj(const Trajectories::ConstSharedPtr msg);
-
   void set_up_params();
 
   /**
@@ -64,29 +64,8 @@ private:
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters);
 
-  void interpolate_trajectory(
-    std::vector<TrajectoryPoint> & traj_points, const Odometry & current_odometry,
-    const AccelWithCovarianceStamped & current_acceleration);
-
-  void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
-
-  void filter_velocity(
-    std::vector<TrajectoryPoint> & input_trajectory, const double initial_motion_speed,
-    const double initial_motion_acc, const double nearest_dist_threshold,
-    const double nearest_yaw_threshold);
-
-  static void clamp_velocities(
-    std::vector<TrajectoryPoint> & input_trajectory_array, float min_velocity,
-    float min_acceleration);
-
-  static void set_max_velocity(
-    std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity);
-
-  static void remove_close_proximity_points(
-    std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist = 1E-2);
   // interface subscriber
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
-
   // interface publisher
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
   rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr

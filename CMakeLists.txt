@@ -7,8 +7,8 @@ autoware_package()
 
 # control validator
 ament_auto_add_library(autoware_trajectory_interpolator_component SHARED
-  include/autoware/trajectory_interpolator/trajectory_interpolator.hpp
   src/trajectory_interpolator.cpp
+  src/utils.cpp
 )
 target_link_libraries(autoware_trajectory_interpolator_component)
 rclcpp_components_register_node(autoware_trajectory_interpolator_component
