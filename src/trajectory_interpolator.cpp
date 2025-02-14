@@ -81,7 +81,7 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   const std::vector<rclcpp::Parameter> & parameters)
 {
   using autoware::universe_utils::updateParam;
-  TrajectoryInterpolatorParams params;
+  auto params = params_;
 
   updateParam<double>(parameters, "keep_last_trajectory_s", params.keep_last_trajectory_s);
   updateParam<double>(parameters, "nearest_dist_threshold_m", params.nearest_dist_threshold_m);
