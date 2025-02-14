@@ -131,8 +131,10 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   auto create_output_trajectory_from_past = [&]() {
     NewTrajectory previous_trajectory;
     previous_trajectory.points = previous_trajectory_ptr_->points;
-    previous_trajectory.header = msg->trajectories.front().header;
+    previous_trajectory.header = previous_trajectory_ptr_->header;
+    previous_trajectory.header.stamp = now();
     previous_trajectory.generator_id = msg->trajectories.front().generator_id;
+    previous_trajectory.score = 1.0;
     return previous_trajectory;
   };
 
@@ -140,7 +142,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     if (time_diff < keep_last_trajectory_s) {
-      Trajectories output_trajectories;
+      Trajectories output_trajectories = *msg;
+      output_trajectories.trajectories.clear();
       output_trajectories.trajectories.push_back(create_output_trajectory_from_past());
       trajectories_pub_->publish(output_trajectories);
       return;
