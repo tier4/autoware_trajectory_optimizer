@@ -83,6 +83,8 @@ private:
   Trajectory::ConstSharedPtr previous_trajectory_ptr_;
   Trajectory::ConstSharedPtr previous_output_ptr_;
 
+  rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
+    debug_processing_time_detail_pub_;
   mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
   std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
   std::shared_ptr<rclcpp::Time> last_time_{nullptr};
