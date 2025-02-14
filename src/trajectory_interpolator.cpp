@@ -69,6 +69,12 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
     std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
   // interface publisher
   trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
+  // debug time keeper
+  debug_processing_time_detail_pub_ =
+    create_publisher<autoware::universe_utils::ProcessingTimeDetail>(
+      "~/debug/processing_time_detail_ms", 1);
+  time_keeper_ =
+    std::make_shared<autoware::universe_utils::TimeKeeper>(debug_processing_time_detail_pub_);
 }
 
 rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
@@ -115,6 +121,7 @@ void TrajectoryInterpolator::set_up_params()
 
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
+  autoware::universe_utils::ScopedTimeTrack st(__func__, *time_keeper_);
   current_odometry_ptr_ = sub_current_odometry_.takeData();
   current_acceleration_ptr_ = sub_current_acceleration_.takeData();
   previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
