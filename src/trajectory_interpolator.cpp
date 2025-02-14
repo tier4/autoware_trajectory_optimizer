@@ -138,9 +138,9 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
       trajectories_pub_->publish(output_trajectories);
       return;
     }
-
-    last_time_ = std::make_shared<rclcpp::Time>(now());
   }
+  last_time_ = std::make_shared<rclcpp::Time>(now());
+
   if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
     RCLCPP_ERROR(get_logger(), "No current odometry data");
     return;
