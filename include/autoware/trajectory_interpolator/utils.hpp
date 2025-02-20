@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
 
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
+#include "autoware/trajectory_interpolator/trajectory_point.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <rclcpp/logger.hpp>
@@ -38,10 +39,19 @@ using autoware_new_planning_msgs::msg::Trajectories;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
+using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+
+/**
+ * @brief Interpolates the given trajectory points based on trajectory length.
+ *
+ * @param traj_points The trajectory points to be interpolated.
+ * @param params The parameters for trajectory interpolation.
+ */
+void apply_cubic_spline(
+  TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params);
 
 /**
  * @brief Interpolates the given trajectory points based on the current odometry and acceleration.

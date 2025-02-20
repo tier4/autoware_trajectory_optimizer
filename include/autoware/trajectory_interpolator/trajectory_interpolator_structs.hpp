@@ -31,6 +31,8 @@ struct TrajectoryInterpolatorParams
   double target_pull_out_speed_mps{0.0};
   double target_pull_out_acc_mps2{0.0};
   double max_speed_mps{0.0};
+  double spline_interpolation_resolution_m{0.0};
+  bool use_cubic_spline_interpolation{false};
   bool publish_last_trajectory{false};
   bool keep_last_trajectory{false};
 };
