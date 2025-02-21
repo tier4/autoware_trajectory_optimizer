@@ -14,7 +14,7 @@
 
 #include "autoware/trajectory_interpolator/utils.hpp"
 
-#include "autoware/trajectory/interpolator/cubic_spline.hpp"
+#include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
@@ -27,7 +27,7 @@
 
 namespace autoware::trajectory_interpolator::utils
 {
-using autoware::trajectory::interpolator::CubicSpline;
+using autoware::trajectory::interpolator::AkimaSpline;
 using InterpolationTrajectory = autoware::trajectory::Trajectory<TrajectoryPoint>;
 
 rclcpp::Logger get_logger()
@@ -154,11 +154,11 @@ bool validate_pose(const geometry_msgs::msg::Pose & pose)
          !std::isnan(pose.orientation.z) && !std::isnan(pose.orientation.w);
 }
 
-void apply_cubic_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
+void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
 {
   std::optional<InterpolationTrajectory> interpolation_trajectory_util =
     InterpolationTrajectory::Builder{}
-      .set_xy_interpolator<CubicSpline>()  // Set interpolator for x-y plane
+      .set_xy_interpolator<AkimaSpline>()  // Set interpolator for x-y plane
       .build(traj_points);
   if (!interpolation_trajectory_util) {
     RCLCPP_ERROR(get_logger(), "Failed to build interpolation trajectory");
@@ -234,7 +234,7 @@ void interpolate_trajectory(
   }
   // Apply spline to smooth the trajectory
   if (params.use_cubic_spline_interpolation) {
-    apply_cubic_spline(traj_points, params);
+    apply_spline(traj_points, params);
   }
 
   // Recalculate timestamps

@@ -50,8 +50,7 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
  * @param traj_points The trajectory points to be interpolated.
  * @param params The parameters for trajectory interpolation.
  */
-void apply_cubic_spline(
-  TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params);
+void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params);
 
 /**
  * @brief Interpolates the given trajectory points based on the current odometry and acceleration.
