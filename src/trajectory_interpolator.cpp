@@ -45,10 +45,8 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
     "~/debug/processing_time_detail_ms", 1);
   time_keeper_ =
     std::make_shared<autoware::universe_utils::TimeKeeper>(debug_processing_time_detail_);
-
-  // const auto vehicle_info =
-  // autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
-  constexpr double wheelbase = 2.74;  // vehicle_info.wheel_base_m;
+  const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+  double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
   smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
   smoother_->setWheelBase(wheelbase);
   // // Set maximum acceleration before applying smoother. Depends on acceleration request from
@@ -89,6 +87,11 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   updateParam<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
   updateParam<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
   updateParam<double>(parameters, "max_speed_mps", params.max_speed_mps);
+  updateParam<double>(
+    parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
+  updateParam<bool>(
+    parameters, "use_cubic_spline_interpolation", params.use_cubic_spline_interpolation);
+  updateParam<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   updateParam<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   updateParam<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
 
@@ -114,7 +117,11 @@ void TrajectoryInterpolator::set_up_params()
   params_.target_pull_out_acc_mps2 =
     getOrDeclareParameter<double>(*this, "target_pull_out_acc_mps2");
   params_.max_speed_mps = getOrDeclareParameter<double>(*this, "max_speed_mps");
-
+  params_.spline_interpolation_resolution_m =
+    getOrDeclareParameter<double>(*this, "spline_interpolation_resolution_m");
+  params_.use_cubic_spline_interpolation =
+    getOrDeclareParameter<bool>(*this, "use_cubic_spline_interpolation");
+  params_.smooth_velocities = getOrDeclareParameter<bool>(*this, "smooth_velocities");
   params_.publish_last_trajectory = getOrDeclareParameter<bool>(*this, "publish_last_trajectory");
   params_.keep_last_trajectory = getOrDeclareParameter<bool>(*this, "keep_last_trajectory");
 }
@@ -122,9 +129,9 @@ void TrajectoryInterpolator::set_up_params()
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
   autoware::universe_utils::ScopedTimeTrack st(__func__, *time_keeper_);
+  previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
   current_odometry_ptr_ = sub_current_odometry_.takeData();
   current_acceleration_ptr_ = sub_current_acceleration_.takeData();
-  previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
 
@@ -135,6 +142,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
     previous_trajectory.header.stamp = now();
     previous_trajectory.generator_id = msg->trajectories.front().generator_id;
     previous_trajectory.score = 1.0;
+    motion_utils::calculate_time_from_start(
+      previous_trajectory.points, current_odometry_ptr_->pose.pose.position);
     return previous_trajectory;
   };
 

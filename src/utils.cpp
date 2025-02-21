@@ -14,10 +14,21 @@
 
 #include "autoware/trajectory_interpolator/utils.hpp"
 
+#include "autoware/trajectory/interpolator/cubic_spline.hpp"
+#include "autoware/trajectory/interpolator/interpolator.hpp"
+#include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
+
+#include <autoware/universe_utils/geometry/geometry.hpp>
+#include <rclcpp/logging.hpp>
+
+#include <cmath>
+#include <iostream>
 
 namespace autoware::trajectory_interpolator::utils
 {
+using autoware::trajectory::interpolator::CubicSpline;
+using InterpolationTrajectory = autoware::trajectory::Trajectory<TrajectoryPoint>;
 
 rclcpp::Logger get_logger()
 {
@@ -132,6 +143,55 @@ void filter_velocity(
   }
 }
 
+bool validate_pose(const geometry_msgs::msg::Pose & pose)
+{
+  return std::isfinite(pose.position.x) && std::isfinite(pose.position.y) &&
+         std::isfinite(pose.position.z) && std::isfinite(pose.orientation.x) &&
+         std::isfinite(pose.orientation.y) && std::isfinite(pose.orientation.z) &&
+         std::isfinite(pose.orientation.w) && !std::isnan(pose.position.x) &&
+         !std::isnan(pose.position.y) && !std::isnan(pose.position.z) &&
+         !std::isnan(pose.orientation.x) && !std::isnan(pose.orientation.y) &&
+         !std::isnan(pose.orientation.z) && !std::isnan(pose.orientation.w);
+}
+
+void apply_cubic_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
+{
+  std::optional<InterpolationTrajectory> interpolation_trajectory_util =
+    InterpolationTrajectory::Builder{}
+      .set_xy_interpolator<CubicSpline>()  // Set interpolator for x-y plane
+      .build(traj_points);
+  if (!interpolation_trajectory_util) {
+    RCLCPP_ERROR(get_logger(), "Failed to build interpolation trajectory");
+    return;
+  }
+  interpolation_trajectory_util->align_orientation_with_trajectory_direction();
+  TrajectoryPoints output_points;
+  output_points.reserve(traj_points.size());
+
+  const auto ds = params.spline_interpolation_resolution_m;
+
+  for (auto s = 0.0; s <= interpolation_trajectory_util->length(); s += ds) {
+    auto p = interpolation_trajectory_util->compute(s);
+    if (!validate_pose(p.pose)) {
+      continue;
+    }
+    output_points.push_back(p);
+  }
+
+  if (output_points.size() < 2) {
+    RCLCPP_WARN(get_logger(), "Not enough points in trajectory after cubic spline interpolation");
+    return;
+  }
+  constexpr double epsilon{1e-2};
+  auto last_point = interpolation_trajectory_util->compute(interpolation_trajectory_util->length());
+  auto d = autoware::universe_utils::calcDistance2d(
+    last_point.pose.position, output_points.back().pose.position);
+  if (d > epsilon) {
+    output_points.push_back(last_point);
+  };
+  traj_points = output_points;
+}
+
 void interpolate_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
   const AccelWithCovarianceStamped & current_acceleration,
@@ -169,7 +229,14 @@ void interpolate_trajectory(
   set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
 
   // Smooth velocity profile
-  filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
+  if (params.smooth_velocities) {
+    filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
+  }
+  // Apply spline to smooth the trajectory
+  if (params.use_cubic_spline_interpolation) {
+    apply_cubic_spline(traj_points, params);
+  }
+
   // Recalculate timestamps
   motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);
 
