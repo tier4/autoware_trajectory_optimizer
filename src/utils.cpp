@@ -19,6 +19,7 @@
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 
+#include <autoware/universe_utils/geometry/geometry.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <cmath>
@@ -181,6 +182,13 @@ void apply_cubic_spline(TrajectoryPoints & traj_points, const TrajectoryInterpol
     RCLCPP_WARN(get_logger(), "Not enough points in trajectory after cubic spline interpolation");
     return;
   }
+  constexpr double epsilon{1e-2};
+  auto last_point = interpolation_trajectory_util->compute(interpolation_trajectory_util->length());
+  auto d = autoware::universe_utils::calcDistance2d(
+    last_point.pose.position, output_points.back().pose.position);
+  if (d > epsilon) {
+    output_points.push_back(last_point);
+  };
   traj_points = output_points;
 }
 
