@@ -221,8 +221,9 @@ void interpolate_trajectory(
   set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
 
   // Smooth velocity profile
-  filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
-
+  if (params.smooth_velocities) {
+    filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
+  }
   // Apply spline to smooth the trajectory
   if (params.use_cubic_spline_interpolation) {
     apply_cubic_spline(traj_points, params);

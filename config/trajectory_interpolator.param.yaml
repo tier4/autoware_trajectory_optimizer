@@ -8,5 +8,6 @@
     max_speed_mps: 5.0  # [mps]
     spline_interpolation_resolution_m: 0.5 # [m]
     use_cubic_spline_interpolation: true
+    smooth_velocities: true
     publish_last_trajectory: true
     keep_last_trajectory: true
