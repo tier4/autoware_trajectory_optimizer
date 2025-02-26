@@ -90,7 +90,7 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   updateParam<double>(
     parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
   updateParam<bool>(
-    parameters, "use_cubic_spline_interpolation", params.use_cubic_spline_interpolation);
+    parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   updateParam<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   updateParam<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   updateParam<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
@@ -119,8 +119,8 @@ void TrajectoryInterpolator::set_up_params()
   params_.max_speed_mps = getOrDeclareParameter<double>(*this, "max_speed_mps");
   params_.spline_interpolation_resolution_m =
     getOrDeclareParameter<double>(*this, "spline_interpolation_resolution_m");
-  params_.use_cubic_spline_interpolation =
-    getOrDeclareParameter<bool>(*this, "use_cubic_spline_interpolation");
+  params_.use_akima_spline_interpolation =
+    getOrDeclareParameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = getOrDeclareParameter<bool>(*this, "smooth_velocities");
   params_.publish_last_trajectory = getOrDeclareParameter<bool>(*this, "publish_last_trajectory");
   params_.keep_last_trajectory = getOrDeclareParameter<bool>(*this, "keep_last_trajectory");

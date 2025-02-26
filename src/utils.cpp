@@ -161,7 +161,7 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
       .set_xy_interpolator<AkimaSpline>()  // Set interpolator for x-y plane
       .build(traj_points);
   if (!interpolation_trajectory_util) {
-    RCLCPP_ERROR(get_logger(), "Failed to build interpolation trajectory");
+    RCLCPP_WARN(get_logger(), "Failed to build interpolation trajectory");
     return;
   }
   interpolation_trajectory_util->align_orientation_with_trajectory_direction();
@@ -179,7 +179,7 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
   }
 
   if (output_points.size() < 2) {
-    RCLCPP_WARN(get_logger(), "Not enough points in trajectory after cubic spline interpolation");
+    RCLCPP_WARN(get_logger(), "Not enough points in trajectory after akima spline interpolation");
     return;
   }
   constexpr double epsilon{1e-2};
@@ -233,7 +233,7 @@ void interpolate_trajectory(
     filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
   }
   // Apply spline to smooth the trajectory
-  if (params.use_cubic_spline_interpolation) {
+  if (params.use_akima_spline_interpolation) {
     apply_spline(traj_points, params);
   }
 
