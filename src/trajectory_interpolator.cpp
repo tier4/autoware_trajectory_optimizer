@@ -16,12 +16,12 @@
 
 #include "autoware/motion_utils/resample/resample.hpp"
 #include "autoware/trajectory_interpolator/utils.hpp"
-#include "autoware/universe_utils/ros/parameter.hpp"
+#include "autoware_utils/ros/parameter.hpp"
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware/universe_utils/geometry/geometry.hpp>
-#include <autoware/universe_utils/ros/update_param.hpp>
+#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils/ros/update_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_new_planning_msgs/msg/detail/trajectories__struct.hpp>
@@ -41,10 +41,9 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
 {
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
-  debug_processing_time_detail_ = create_publisher<autoware::universe_utils::ProcessingTimeDetail>(
-    "~/debug/processing_time_detail_ms", 1);
-  time_keeper_ =
-    std::make_shared<autoware::universe_utils::TimeKeeper>(debug_processing_time_detail_);
+  debug_processing_time_detail_ =
+    create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
+  time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_);
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
   double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
   smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
@@ -69,31 +68,29 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
   // debug time keeper
   debug_processing_time_detail_pub_ =
-    create_publisher<autoware::universe_utils::ProcessingTimeDetail>(
-      "~/debug/processing_time_detail_ms", 1);
-  time_keeper_ =
-    std::make_shared<autoware::universe_utils::TimeKeeper>(debug_processing_time_detail_pub_);
+    create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
+  time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_pub_);
 }
 
 rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   const std::vector<rclcpp::Parameter> & parameters)
 {
-  using autoware::universe_utils::updateParam;
+  using autoware_utils::update_param;
   auto params = params_;
 
-  updateParam<double>(parameters, "keep_last_trajectory_s", params.keep_last_trajectory_s);
-  updateParam<double>(parameters, "nearest_dist_threshold_m", params.nearest_dist_threshold_m);
-  updateParam<double>(parameters, "nearest_yaw_threshold_rad", params.nearest_yaw_threshold_rad);
-  updateParam<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
-  updateParam<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
-  updateParam<double>(parameters, "max_speed_mps", params.max_speed_mps);
-  updateParam<double>(
+  update_param<double>(parameters, "keep_last_trajectory_s", params.keep_last_trajectory_s);
+  update_param<double>(parameters, "nearest_dist_threshold_m", params.nearest_dist_threshold_m);
+  update_param<double>(parameters, "nearest_yaw_threshold_rad", params.nearest_yaw_threshold_rad);
+  update_param<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
+  update_param<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
+  update_param<double>(parameters, "max_speed_mps", params.max_speed_mps);
+  update_param<double>(
     parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
-  updateParam<bool>(
+  update_param<bool>(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
-  updateParam<bool>(parameters, "smooth_velocities", params.smooth_velocities);
-  updateParam<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
-  updateParam<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
+  update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
+  update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
+  update_param<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
 
   params_ = params;
 
@@ -105,33 +102,35 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
 
 void TrajectoryInterpolator::set_up_params()
 {
-  using autoware::universe_utils::getOrDeclareParameter;
+  using autoware_utils::get_or_declare_parameter;
 
-  params_.keep_last_trajectory_s = getOrDeclareParameter<double>(*this, "keep_last_trajectory_s");
+  params_.keep_last_trajectory_s =
+    get_or_declare_parameter<double>(*this, "keep_last_trajectory_s");
   params_.nearest_dist_threshold_m =
-    getOrDeclareParameter<double>(*this, "nearest_dist_threshold_m");
+    get_or_declare_parameter<double>(*this, "nearest_dist_threshold_m");
   params_.nearest_yaw_threshold_rad =
-    getOrDeclareParameter<double>(*this, "nearest_yaw_threshold_rad");
+    get_or_declare_parameter<double>(*this, "nearest_yaw_threshold_rad");
   params_.target_pull_out_speed_mps =
-    getOrDeclareParameter<double>(*this, "target_pull_out_speed_mps");
+    get_or_declare_parameter<double>(*this, "target_pull_out_speed_mps");
   params_.target_pull_out_acc_mps2 =
-    getOrDeclareParameter<double>(*this, "target_pull_out_acc_mps2");
-  params_.max_speed_mps = getOrDeclareParameter<double>(*this, "max_speed_mps");
+    get_or_declare_parameter<double>(*this, "target_pull_out_acc_mps2");
+  params_.max_speed_mps = get_or_declare_parameter<double>(*this, "max_speed_mps");
   params_.spline_interpolation_resolution_m =
-    getOrDeclareParameter<double>(*this, "spline_interpolation_resolution_m");
+    get_or_declare_parameter<double>(*this, "spline_interpolation_resolution_m");
   params_.use_akima_spline_interpolation =
-    getOrDeclareParameter<bool>(*this, "use_akima_spline_interpolation");
-  params_.smooth_velocities = getOrDeclareParameter<bool>(*this, "smooth_velocities");
-  params_.publish_last_trajectory = getOrDeclareParameter<bool>(*this, "publish_last_trajectory");
-  params_.keep_last_trajectory = getOrDeclareParameter<bool>(*this, "keep_last_trajectory");
+    get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
+  params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
+  params_.publish_last_trajectory =
+    get_or_declare_parameter<bool>(*this, "publish_last_trajectory");
+  params_.keep_last_trajectory = get_or_declare_parameter<bool>(*this, "keep_last_trajectory");
 }
 
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
-  autoware::universe_utils::ScopedTimeTrack st(__func__, *time_keeper_);
-  previous_trajectory_ptr_ = sub_previous_trajectory_.takeData();
-  current_odometry_ptr_ = sub_current_odometry_.takeData();
-  current_acceleration_ptr_ = sub_current_acceleration_.takeData();
+  autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
+  previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
+  current_odometry_ptr_ = sub_current_odometry_.take_data();
+  current_acceleration_ptr_ = sub_current_acceleration_.take_data();
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
 

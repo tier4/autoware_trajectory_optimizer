@@ -19,7 +19,7 @@
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 
-#include <autoware/universe_utils/geometry/geometry.hpp>
+#include <autoware_utils/geometry/geometry.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <cmath>
@@ -68,7 +68,7 @@ void remove_close_proximity_points(TrajectoryPoints & input_trajectory_array, co
       input_trajectory_array.end(),
       [&](const TrajectoryPoint & point) {
         const auto prev_it = std::prev(&point);
-        const auto dist = autoware::universe_utils::calcDistance2d(point, *prev_it);
+        const auto dist = autoware_utils::calc_distance2d(point, *prev_it);
         return dist < min_dist;
       }),
     input_trajectory_array.end());
@@ -184,8 +184,8 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
   }
   constexpr double epsilon{1e-2};
   auto last_point = interpolation_trajectory_util->compute(interpolation_trajectory_util->length());
-  auto d = autoware::universe_utils::calcDistance2d(
-    last_point.pose.position, output_points.back().pose.position);
+  auto d =
+    autoware_utils::calc_distance2d(last_point.pose.position, output_points.back().pose.position);
   if (d > epsilon) {
     output_points.push_back(last_point);
   };

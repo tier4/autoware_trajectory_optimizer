@@ -16,9 +16,9 @@
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
-#include "autoware/universe_utils/ros/polling_subscriber.hpp"
-#include "autoware/universe_utils/system/time_keeper.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
+#include "autoware_utils/ros/polling_subscriber.hpp"
+#include "autoware_utils/system/time_keeper.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include <rclcpp/subscription.hpp>
@@ -68,14 +68,13 @@ private:
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
   // interface publisher
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
-  rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
-    debug_processing_time_detail_;
+  rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr debug_processing_time_detail_;
 
-  autoware::universe_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
+  autoware_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
     this, "~/input/odometry"};
-  autoware::universe_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
+  autoware_utils::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
     sub_current_acceleration_{this, "~/input/acceleration"};
-  autoware::universe_utils::InterProcessPollingSubscriber<Trajectory> sub_previous_trajectory_{
+  autoware_utils::InterProcessPollingSubscriber<Trajectory> sub_previous_trajectory_{
     this, "~/input/previous_trajectory"};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
@@ -83,9 +82,9 @@ private:
   Trajectory::ConstSharedPtr previous_trajectory_ptr_;
   Trajectory::ConstSharedPtr previous_output_ptr_;
 
-  rclcpp::Publisher<autoware::universe_utils::ProcessingTimeDetail>::SharedPtr
+  rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr
     debug_processing_time_detail_pub_;
-  mutable std::shared_ptr<autoware::universe_utils::TimeKeeper> time_keeper_{nullptr};
+  mutable std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_{nullptr};
   std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
   std::shared_ptr<rclcpp::Time> last_time_{nullptr};
 
