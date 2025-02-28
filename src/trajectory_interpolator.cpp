@@ -86,11 +86,13 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   update_param<double>(parameters, "max_speed_mps", params.max_speed_mps);
   update_param<double>(
     parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
+  update_param<double>(parameters, "backward_path_extension_m", params.backward_path_extension_m);
   update_param<bool>(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   update_param<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
+  update_param<bool>(parameters, "extend_trajectory_backward", params.extend_trajectory_backward);
 
   params_ = params;
 
@@ -117,23 +119,21 @@ void TrajectoryInterpolator::set_up_params()
   params_.max_speed_mps = get_or_declare_parameter<double>(*this, "max_speed_mps");
   params_.spline_interpolation_resolution_m =
     get_or_declare_parameter<double>(*this, "spline_interpolation_resolution_m");
+  params_.backward_path_extension_m =
+    get_or_declare_parameter<double>(*this, "backward_path_extension_m");
   params_.use_akima_spline_interpolation =
     get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
   params_.publish_last_trajectory =
     get_or_declare_parameter<bool>(*this, "publish_last_trajectory");
   params_.keep_last_trajectory = get_or_declare_parameter<bool>(*this, "keep_last_trajectory");
+  params_.extend_trajectory_backward =
+    get_or_declare_parameter<bool>(*this, "extend_trajectory_backward");
 }
 
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
-  previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
-  current_odometry_ptr_ = sub_current_odometry_.take_data();
-  current_acceleration_ptr_ = sub_current_acceleration_.take_data();
-
-  const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
-
   auto create_output_trajectory_from_past = [&]() {
     NewTrajectory previous_trajectory;
     previous_trajectory.points = previous_trajectory_ptr_->points;
@@ -145,8 +145,14 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
       previous_trajectory.points, current_odometry_ptr_->pose.pose.position);
     return previous_trajectory;
   };
+  previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
+  current_odometry_ptr_ = sub_current_odometry_.take_data();
+  current_acceleration_ptr_ = sub_current_acceleration_.take_data();
 
-  if (previous_trajectory_ptr_ && params_.keep_last_trajectory) {
+  const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
+  const auto keep_last_trajectory = params_.keep_last_trajectory;
+
+  if (previous_trajectory_ptr_ && keep_last_trajectory) {
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     if (time_diff < keep_last_trajectory_s) {
