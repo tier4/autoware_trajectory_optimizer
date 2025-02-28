@@ -32,10 +32,12 @@ struct TrajectoryInterpolatorParams
   double target_pull_out_acc_mps2{0.0};
   double max_speed_mps{0.0};
   double spline_interpolation_resolution_m{0.0};
+  double backward_path_extension_m{0.0};
   bool use_akima_spline_interpolation{false};
   bool smooth_velocities{false};
   bool publish_last_trajectory{false};
   bool keep_last_trajectory{false};
+  bool extend_trajectory_backward{false};
 };
 }  // namespace autoware::trajectory_interpolator
 #endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_

@@ -45,6 +45,19 @@ using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 /**
+ * @brief Adds parts of the previous trajectory to the current trajectory.
+ *
+ * @param traj_points The trajectory points to be extended
+ * @param previous_trajectory Pointer to previous trajectory.
+ * @param current_odometry Ego odometry.
+ * @param backward_length How much to extend the path backward.
+ */
+void extend_trajectory_backward(
+  TrajectoryPoints & traj_points, const TrajectoryPoints & previous_trajectory,
+  const Odometry & current_odometry, const double backward_length,
+  const TrajectoryInterpolatorParams & params);
+
+/**
  * @brief Interpolates the given trajectory points based on trajectory length.
  *
  * @param traj_points The trajectory points to be interpolated.
@@ -62,8 +75,8 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
  * @param smoother The smoother to be used for filtering the trajectory.
  */
 void interpolate_trajectory(
-  TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const AccelWithCovarianceStamped & current_acceleration,
+  TrajectoryPoints & traj_points, const Trajectory::ConstSharedPtr & previous_trajectory_ptr,
+  const Odometry & current_odometry, const AccelWithCovarianceStamped & current_acceleration,
   const TrajectoryInterpolatorParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & smoother);
 
