@@ -166,14 +166,15 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   last_time_ = std::make_shared<rclcpp::Time>(now());
 
   if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
-    RCLCPP_ERROR(get_logger(), "No current odometry data");
+    RCLCPP_ERROR(get_logger(), "No odometry or acceleration data");
     return;
   }
 
   Trajectories output_trajectories = *msg;
   for (auto & trajectory : output_trajectories.trajectories) {
     utils::interpolate_trajectory(
-      trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_, params_, smoother_);
+      trajectory.points, previous_trajectory_ptr_, *current_odometry_ptr_,
+      *current_acceleration_ptr_, params_, smoother_);
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {

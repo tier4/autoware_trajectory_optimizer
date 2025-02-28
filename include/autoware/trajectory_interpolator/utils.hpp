@@ -53,8 +53,9 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
  * @param backward_length How much to extend the path backward.
  */
 void extend_trajectory_backward(
-  TrajectoryPoints & traj_points, const Trajectory::ConstSharedPtr & previous_trajectory,
-  const Odometry & current_odometry, const double backward_length);
+  TrajectoryPoints & traj_points, const TrajectoryPoints & previous_trajectory,
+  const Odometry & current_odometry, const double backward_length,
+  const TrajectoryInterpolatorParams & params);
 
 /**
  * @brief Interpolates the given trajectory points based on trajectory length.

@@ -155,20 +155,19 @@ bool validate_pose(const geometry_msgs::msg::Pose & pose)
 }
 
 void extend_trajectory_backward(
-  TrajectoryPoints & traj_points, const Trajectory::ConstSharedPtr & previous_trajectory,
+  TrajectoryPoints & traj_points, const TrajectoryPoints & previous_trajectory,
   const Odometry & current_odometry, const double backward_length,
   const TrajectoryInterpolatorParams & params)
 {
-  if (!previous_trajectory || traj_points.empty()) {
+  if (previous_trajectory.empty() || traj_points.empty()) {
     return;
   }
-  const auto & previous_traj_points = previous_trajectory->points;
   const size_t orig_ego_idx = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
     traj_points, current_odometry.pose.pose, params.nearest_dist_threshold_m,
     params.nearest_yaw_threshold_rad);
 
   const auto prev_ego_idx = autoware::motion_utils::findNearestSegmentIndex(
-    previous_traj_points, autoware_utils::get_pose(traj_points.at(orig_ego_idx)),
+    previous_trajectory, autoware_utils::get_pose(traj_points.at(orig_ego_idx)),
     std::numeric_limits<double>::max(), params.nearest_yaw_threshold_rad);
   if (!prev_ego_idx) {
     return;
@@ -180,27 +179,38 @@ void extend_trajectory_backward(
   double accumulated_length = 0.0;
   for (size_t i = prev_ego_idx.value(); i > 0; i--) {
     accumulated_length +=
-      autoware_utils::calc_distance2d(previous_traj_points.at(i - 1), previous_traj_points.at(i));
+      autoware_utils::calc_distance2d(previous_trajectory.at(i - 1), previous_trajectory.at(i));
     if (accumulated_length > backward_length) {
       clip_idx = i;
       break;
     }
   }
 
-  const auto inserted_elements = *prev_ego_idx - clip_idx;
-  if (inserted_elements < 0) {
+  if (*prev_ego_idx <= clip_idx) {
     return;
   }
+
+  const auto prev_ego_point = previous_trajectory.at(*prev_ego_idx);
+  const auto orig_ego_point = traj_points.at(orig_ego_idx);
+  const auto distance = autoware_utils::calc_distance2d(prev_ego_point, orig_ego_point);
+  if (distance > params.nearest_dist_threshold_m) {
+    return;
+  }
+
+  const auto inserted_elements = *prev_ego_idx - clip_idx;
+
   {
     traj_points.insert(
-      traj_points.begin(), previous_traj_points.begin() + clip_idx,
-      previous_traj_points.begin() + *prev_ego_idx);
+      traj_points.begin(),
+      previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(clip_idx),
+      previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(*prev_ego_idx));
   }
 
   // overwrite backward path velocity by latest one.
-  std::for_each(traj_points.begin(), traj_points.begin() + inserted_elements, [&](auto & p) {
-    p.point.longitudinal_velocity_mps = speed_at_ego;
-  });
+  std::for_each(
+    traj_points.begin(),
+    traj_points.begin() + static_cast<TrajectoryPoints::difference_type>(inserted_elements),
+    [&](auto & p) { p.longitudinal_velocity_mps = speed_at_ego; });
 }
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
@@ -286,9 +296,10 @@ void interpolate_trajectory(
     apply_spline(traj_points, params);
   }
 
-  if (params.extend_trajectory_backward) {
+  if (previous_trajectory_ptr && params.extend_trajectory_backward) {
     extend_trajectory_backward(
-      traj_points, previous_trajectory_ptr, current_odometry, params.backward_path_extension_m);
+      traj_points, previous_trajectory_ptr->points, current_odometry,
+      params.backward_path_extension_m, params);
   }
   // Recalculate timestamps
   motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);
