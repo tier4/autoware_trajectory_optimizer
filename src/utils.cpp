@@ -19,8 +19,12 @@
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils/math/normalization.hpp>
 #include <rclcpp/logging.hpp>
+
+#include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 
 #include <cmath>
 #include <iostream>
@@ -154,62 +158,6 @@ bool validate_pose(const geometry_msgs::msg::Pose & pose)
          !std::isnan(pose.orientation.z) && !std::isnan(pose.orientation.w);
 }
 
-void extend_trajectory_backward(
-  TrajectoryPoints & traj_points, const TrajectoryPoints & previous_trajectory,
-  const Odometry & current_odometry, const double backward_length,
-  const TrajectoryInterpolatorParams & params)
-{
-  if (previous_trajectory.empty() || traj_points.empty()) {
-    return;
-  }
-  const size_t orig_ego_idx = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
-    traj_points, current_odometry.pose.pose, params.nearest_dist_threshold_m,
-    params.nearest_yaw_threshold_rad);
-
-  const auto prev_ego_idx = autoware::motion_utils::findNearestSegmentIndex(
-    previous_trajectory, autoware_utils::get_pose(traj_points.at(orig_ego_idx)),
-    std::numeric_limits<double>::max(), params.nearest_yaw_threshold_rad);
-  if (!prev_ego_idx) {
-    return;
-  }
-
-  size_t clip_idx = 0;
-  double accumulated_length = 0.0;
-  for (size_t i = prev_ego_idx.value(); i > 0; i--) {
-    accumulated_length +=
-      autoware_utils::calc_distance2d(previous_trajectory.at(i - 1), previous_trajectory.at(i));
-    if (accumulated_length > backward_length) {
-      clip_idx = i;
-      break;
-    }
-  }
-
-  if (*prev_ego_idx <= clip_idx) {
-    return;
-  }
-
-  const auto prev_ego_point = previous_trajectory.at(*prev_ego_idx);
-  const auto orig_ego_point = traj_points.at(orig_ego_idx);
-  const auto distance = autoware_utils::calc_distance2d(prev_ego_point, orig_ego_point);
-  if (distance > params.nearest_dist_threshold_m) {
-    return;
-  }
-
-  // Set the speed of the ego vehicle to the speed of the previous trajectory
-  {
-    const auto speed_at_ego_idx = traj_points.at(orig_ego_idx).longitudinal_velocity_mps;
-
-    auto cropped_trajectory = TrajectoryPoints(
-      previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(clip_idx),
-      previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(*prev_ego_idx));
-
-    for (auto & p : cropped_trajectory) {
-      p.longitudinal_velocity_mps = speed_at_ego_idx;
-    }
-    traj_points.insert(traj_points.begin(), cropped_trajectory.begin(), cropped_trajectory.end());
-  }
-}
-
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
 {
   std::optional<InterpolationTrajectory> interpolation_trajectory_util =
@@ -257,8 +205,8 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
 }
 
 void interpolate_trajectory(
-  TrajectoryPoints & traj_points, const Trajectory::ConstSharedPtr & previous_trajectory_ptr,
-  const Odometry & current_odometry, const AccelWithCovarianceStamped & current_acceleration,
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const AccelWithCovarianceStamped & current_acceleration,
   const TrajectoryInterpolatorParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & smoother)
 {
@@ -300,12 +248,6 @@ void interpolate_trajectory(
   if (params.use_akima_spline_interpolation) {
     apply_spline(traj_points, params);
   }
-
-  if (previous_trajectory_ptr && params.extend_trajectory_backward) {
-    extend_trajectory_backward(
-      traj_points, previous_trajectory_ptr->points, current_odometry,
-      params.backward_path_extension_m, params);
-  }
   // Recalculate timestamps
   motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);
 
@@ -315,4 +257,56 @@ void interpolate_trajectory(
   }
 }
 
+void add_ego_state_to_trajectory(
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const TrajectoryInterpolatorParams & params)
+{
+  TrajectoryPoint ego_state;
+  ego_state.pose = current_odometry.pose.pose;
+  ego_state.longitudinal_velocity_mps = current_odometry.twist.twist.linear.x;
+
+  if (traj_points.empty()) {
+    traj_points.push_back(ego_state);
+    return;
+  }
+  const auto & last_point = traj_points.back();
+  const auto yaw_diff = std::abs(
+    autoware_utils::normalize_degree(ego_state.pose.orientation.z - last_point.pose.orientation.z));
+  const auto distance = autoware_utils::calc_distance2d(last_point, ego_state);
+  constexpr double epsilon{1e-2};
+  const bool is_change_small = distance < epsilon && yaw_diff < epsilon;
+  if (is_change_small) {
+    return;
+  }
+
+  const bool is_change_large =
+    distance > params.nearest_dist_threshold_m || yaw_diff > params.nearest_yaw_threshold_rad;
+  if (is_change_large) {
+    traj_points = {ego_state};
+    return;
+  }
+
+  traj_points.push_back(ego_state);
+
+  size_t clip_idx = 0;
+  double accumulated_length = 0.0;
+  for (size_t i = traj_points.size() - 1; i > 0; i--) {
+    accumulated_length += autoware_utils::calc_distance2d(traj_points.at(i - 1), traj_points.at(i));
+    if (accumulated_length > params.backward_path_extension_m) {
+      clip_idx = i;
+      break;
+    }
+  }
+  traj_points.erase(traj_points.begin(), traj_points.begin() + static_cast<int>(clip_idx));
+}
+
+void expand_trajectory_with_ego_history(
+  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points)
+{
+  if (ego_history_points.empty() || traj_points.empty()) {
+    return;
+  }
+
+  traj_points.insert(traj_points.begin(), ego_history_points.begin(), ego_history_points.end());
+}
 }  // namespace autoware::trajectory_interpolator::utils

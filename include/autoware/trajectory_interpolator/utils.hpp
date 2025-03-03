@@ -75,8 +75,8 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
  * @param smoother The smoother to be used for filtering the trajectory.
  */
 void interpolate_trajectory(
-  TrajectoryPoints & traj_points, const Trajectory::ConstSharedPtr & previous_trajectory_ptr,
-  const Odometry & current_odometry, const AccelWithCovarianceStamped & current_acceleration,
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const AccelWithCovarianceStamped & current_acceleration,
   const TrajectoryInterpolatorParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & smoother);
 
@@ -137,6 +137,26 @@ void set_max_velocity(
  */
 void remove_close_proximity_points(
   std::vector<TrajectoryPoint> & input_trajectory_array, const double min_dist = 1E-2);
+
+/**
+ * @brief Adds the ego state to the trajectory points.
+ *
+ * @param traj_points The trajectory points to be updated.
+ * @param current_odometry The current odometry data.
+ * @param params The parameters for trajectory interpolation.
+ */
+void add_ego_state_to_trajectory(
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const TrajectoryInterpolatorParams & params);
+
+/**
+ * @brief Expands the trajectory points with the ego history points.
+ *
+ * @param traj_points The trajectory points to be expanded.
+ * @param ego_history_points The ego history points to be added.
+ */
+void expand_trajectory_with_ego_history(
+  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points);
 
 };  // namespace autoware::trajectory_interpolator::utils
 
