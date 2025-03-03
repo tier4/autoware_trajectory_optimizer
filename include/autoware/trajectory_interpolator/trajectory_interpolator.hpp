@@ -88,6 +88,7 @@ private:
   std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
   std::shared_ptr<rclcpp::Time> last_time_{nullptr};
 
+  Trajectory past_ego_state_trajectory_;
   TrajectoryInterpolatorParams params_;
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 };
