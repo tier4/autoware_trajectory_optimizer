@@ -173,8 +173,6 @@ void extend_trajectory_backward(
     return;
   }
 
-  const auto speed_at_ego = traj_points.at(orig_ego_idx).longitudinal_velocity_mps;
-
   size_t clip_idx = 0;
   double accumulated_length = 0.0;
   for (size_t i = prev_ego_idx.value(); i > 0; i--) {
@@ -197,20 +195,19 @@ void extend_trajectory_backward(
     return;
   }
 
-  const auto inserted_elements = *prev_ego_idx - clip_idx;
-
+  // Set the speed of the ego vehicle to the speed of the previous trajectory
   {
-    traj_points.insert(
-      traj_points.begin(),
+    const auto speed_at_ego_idx = traj_points.at(orig_ego_idx).longitudinal_velocity_mps;
+
+    auto cropped_trajectory = TrajectoryPoints(
       previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(clip_idx),
       previous_trajectory.begin() + static_cast<TrajectoryPoints::difference_type>(*prev_ego_idx));
-  }
 
-  // overwrite backward path velocity by latest one.
-  std::for_each(
-    traj_points.begin(),
-    traj_points.begin() + static_cast<TrajectoryPoints::difference_type>(inserted_elements),
-    [&](auto & p) { p.longitudinal_velocity_mps = speed_at_ego; });
+    for (auto & p : cropped_trajectory) {
+      p.longitudinal_velocity_mps = speed_at_ego_idx;
+    }
+    traj_points.insert(traj_points.begin(), cropped_trajectory.begin(), cropped_trajectory.end());
+  }
 }
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
