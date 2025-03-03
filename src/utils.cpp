@@ -242,11 +242,19 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
     return;
   }
   constexpr double epsilon{1e-2};
-  auto last_point = interpolation_trajectory_util->compute(interpolation_trajectory_util->length());
-  auto d =
-    autoware_utils::calc_distance2d(last_point.pose.position, output_points.back().pose.position);
+  auto last_interpolated_point = output_points.back();
+  auto & original_trajectory_last_point = traj_points.back();
+
+  if (!validate_pose(original_trajectory_last_point.pose)) {
+    RCLCPP_WARN(get_logger(), "Last point in original trajectory is invalid. Removing last point");
+    traj_points = output_points;
+    return;
+  }
+
+  auto d = autoware_utils::calc_distance2d(
+    last_interpolated_point.pose.position, original_trajectory_last_point.pose.position);
   if (d > epsilon) {
-    output_points.push_back(last_point);
+    output_points.push_back(original_trajectory_last_point);
   };
   traj_points = output_points;
 }
