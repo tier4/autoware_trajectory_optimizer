@@ -44,18 +44,34 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   debug_processing_time_detail_ =
     create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
   time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_);
+  smoother_time_keeper_ptr_ = std::make_shared<SmootherTimekeeper>();
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
   double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
-  smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
-  smoother_->setWheelBase(wheelbase);
+  jerk_filtered_smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
+  jerk_filtered_smoother_->setWheelBase(wheelbase);
   // // Set maximum acceleration before applying smoother. Depends on acceleration request from
   // // external velocity limit
-  const double smoother_max_acceleration = get_parameter("normal.max_acc").as_double();
-  const double smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
-  smoother_->setMaxAccel(smoother_max_acceleration);
-  smoother_->setMaxJerk(smoother_max_jerk);
-  last_time_ = std::make_shared<rclcpp::Time>(now());
+  {
+    const double jerk_filtered_smoother_max_acceleration =
+      get_parameter("normal.max_acc").as_double();
+    const double jerk_filtered_smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
+    jerk_filtered_smoother_->setMaxAccel(jerk_filtered_smoother_max_acceleration);
+    jerk_filtered_smoother_->setMaxJerk(jerk_filtered_smoother_max_jerk);
+  }
   set_up_params();
+  {  // parameters
+    // parameters for ego nearest search
+    ego_nearest_param_ = EgoNearestParam(this);
+
+    // parameters for trajectory
+    common_param_ = CommonParam(this);
+  }
+
+  eb_path_smoother_ptr_ = std::make_shared<EBPathSmoother>(
+    this, false, ego_nearest_param_, common_param_, smoother_time_keeper_ptr_);
+  replan_checker_ptr_ = std::make_shared<ReplanChecker>(this, ego_nearest_param_);
+  eb_path_smoother_ptr_->initialize(false, common_param_);
+
   // Parameter Callback
   set_param_res_ = add_on_set_parameters_callback(
     std::bind(&TrajectoryInterpolator::on_parameter, this, std::placeholders::_1));
@@ -70,6 +86,8 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   debug_processing_time_detail_pub_ =
     create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
   time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_pub_);
+  // last time a trajectory was received
+  last_time_ = std::make_shared<rclcpp::Time>(now());
 }
 
 rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
@@ -90,16 +108,43 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   update_param<bool>(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
+  update_param<bool>(parameters, "smooth_trajectories", params.smooth_trajectories);
   update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   update_param<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
   update_param<bool>(parameters, "extend_trajectory_backward", params.extend_trajectory_backward);
 
   params_ = params;
 
+  {  // parameters for ego nearest search
+    ego_nearest_param_.onParam(parameters);
+
+    // parameters for trajectory
+    common_param_.onParam(parameters);
+
+    // parameters for core algorithms
+    eb_path_smoother_ptr_->onParam(parameters);
+    replan_checker_ptr_->onParam(parameters);
+    initialize_planners();
+  }
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason = "success";
   return result;
+}
+
+void TrajectoryInterpolator::initialize_planners()
+{
+  RCLCPP_DEBUG(get_logger(), "Initialize planning");
+
+  eb_path_smoother_ptr_->initialize(false, common_param_);
+  reset_previous_data();
+}
+
+void TrajectoryInterpolator::reset_previous_data()
+{
+  eb_path_smoother_ptr_->resetPreviousData();
+
+  prev_optimized_traj_points_ptr_ = nullptr;
 }
 
 void TrajectoryInterpolator::set_up_params()
@@ -124,6 +169,7 @@ void TrajectoryInterpolator::set_up_params()
   params_.use_akima_spline_interpolation =
     get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
+  params_.smooth_trajectories = get_or_declare_parameter<bool>(*this, "smooth_trajectories");
   params_.publish_last_trajectory =
     get_or_declare_parameter<bool>(*this, "publish_last_trajectory");
   params_.keep_last_trajectory = get_or_declare_parameter<bool>(*this, "keep_last_trajectory");
@@ -182,7 +228,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
         trajectory.points, past_ego_state_trajectory_.points);
     }
     utils::interpolate_trajectory(
-      trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_, params_, smoother_);
+      trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_, params_,
+      jerk_filtered_smoother_, eb_path_smoother_ptr_);
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {

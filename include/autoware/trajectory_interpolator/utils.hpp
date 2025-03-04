@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
 
+#include "autoware/path_smoother/elastic_band.hpp"
+#include "autoware/path_smoother/replan_checker.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 #include "autoware/trajectory_interpolator/trajectory_point.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
@@ -34,6 +36,13 @@
 
 namespace autoware::trajectory_interpolator::utils
 {
+
+using autoware::path_smoother::CommonParam;
+using autoware::path_smoother::EBPathSmoother;
+using autoware::path_smoother::EgoNearestParam;
+using autoware::path_smoother::PlannerData;
+using autoware::path_smoother::ReplanChecker;
+
 using autoware::velocity_smoother::JerkFilteredSmoother;
 using autoware_new_planning_msgs::msg::Trajectories;
 using autoware_perception_msgs::msg::PredictedObjects;
@@ -43,6 +52,11 @@ using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
 using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+
+void smooth_trajectory_with_elastic_band(
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const CommonParam & common_param, const EgoNearestParam & ego_nearest_param,
+  const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr);
 
 /**
  * @brief Adds parts of the previous trajectory to the current trajectory.
@@ -78,7 +92,8 @@ void interpolate_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
   const AccelWithCovarianceStamped & current_acceleration,
   const TrajectoryInterpolatorParams & params,
-  const std::shared_ptr<JerkFilteredSmoother> & smoother);
+  const std::shared_ptr<JerkFilteredSmoother> & jerk_filtered_smoother,
+  const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr);
 
 /**
  * @brief Gets the logger for the trajectory interpolator.
