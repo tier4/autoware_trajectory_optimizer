@@ -39,6 +39,14 @@ rclcpp::Logger get_logger()
   return rclcpp::get_logger("trajectory_interpolator");
 }
 
+void smooth_trajectory_with_elastic_band(
+  TrajectoryPoints & traj_points, const Odometry & current_odometry,
+  const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr)
+{
+  traj_points = eb_path_smoother_ptr->smoothTrajectory(traj_points, current_odometry.pose.pose);
+  eb_path_smoother_ptr->resetPreviousData();
+}
+
 void remove_invalid_points(TrajectoryPoints & input_trajectory)
 {
   if (input_trajectory.size() < 2) {
@@ -208,7 +216,8 @@ void interpolate_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
   const AccelWithCovarianceStamped & current_acceleration,
   const TrajectoryInterpolatorParams & params,
-  const std::shared_ptr<JerkFilteredSmoother> & smoother)
+  const std::shared_ptr<JerkFilteredSmoother> & jerk_filtered_smoother,
+  const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr)
 {
   // Remove overlap points and wrong orientation points
   utils::remove_invalid_points(traj_points);
@@ -242,11 +251,14 @@ void interpolate_trajectory(
 
   // Smooth velocity profile
   if (params.smooth_velocities) {
-    filter_velocity(traj_points, initial_motion, params, smoother, current_odometry);
+    filter_velocity(traj_points, initial_motion, params, jerk_filtered_smoother, current_odometry);
   }
   // Apply spline to smooth the trajectory
-  if (params.use_akima_spline_interpolation) {
-    apply_spline(traj_points, params);
+  if (params.smooth_trajectories) {
+    if (params.use_akima_spline_interpolation) {
+      apply_spline(traj_points, params);
+    }
+    smooth_trajectory_with_elastic_band(traj_points, current_odometry, eb_path_smoother_ptr);
   }
   // Recalculate timestamps
   motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);

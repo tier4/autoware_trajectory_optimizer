@@ -35,6 +35,7 @@ struct TrajectoryInterpolatorParams
   double backward_path_extension_m{0.0};
   bool use_akima_spline_interpolation{false};
   bool smooth_velocities{false};
+  bool smooth_trajectories{false};
   bool publish_last_trajectory{false};
   bool keep_last_trajectory{false};
   bool extend_trajectory_backward{false};

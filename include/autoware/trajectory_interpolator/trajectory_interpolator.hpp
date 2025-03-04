@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
 
+#include "autoware/path_smoother/elastic_band.hpp"
+#include "autoware/path_smoother/replan_checker.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 #include "autoware_utils/ros/polling_subscriber.hpp"
@@ -29,6 +31,7 @@
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
+#include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <string>
@@ -37,15 +40,22 @@
 namespace autoware::trajectory_interpolator
 {
 
+using autoware::path_smoother::CommonParam;
+using autoware::path_smoother::EBPathSmoother;
+using autoware::path_smoother::EgoNearestParam;
+using autoware::path_smoother::PlannerData;
+using autoware::path_smoother::ReplanChecker;
+using SmootherTimekeeper = autoware::path_smoother::TimeKeeper;
+
 using autoware::velocity_smoother::JerkFilteredSmoother;
 using autoware_new_planning_msgs::msg::Trajectories;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 
 class TrajectoryInterpolator : public rclcpp::Node
 {
@@ -55,6 +65,8 @@ public:
 private:
   void on_traj(const Trajectories::ConstSharedPtr msg);
   void set_up_params();
+  void initialize_planners();
+  void reset_previous_data();
 
   /**
    * @brief Callback for parameter updates
@@ -85,8 +97,19 @@ private:
   rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr
     debug_processing_time_detail_pub_;
   mutable std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_{nullptr};
-  std::shared_ptr<JerkFilteredSmoother> smoother_{nullptr};
+  // Velocity smoothing
+  std::shared_ptr<JerkFilteredSmoother> jerk_filtered_smoother_{nullptr};
   std::shared_ptr<rclcpp::Time> last_time_{nullptr};
+
+  // Elastic Band smoothing
+  std::shared_ptr<EBPathSmoother> eb_path_smoother_ptr_{nullptr};
+  std::shared_ptr<ReplanChecker> replan_checker_ptr_{nullptr};
+  mutable std::shared_ptr<SmootherTimekeeper> smoother_time_keeper_ptr_{nullptr};
+  // variables for previous information
+  std::shared_ptr<TrajectoryPoints> prev_optimized_traj_points_ptr_{nullptr};
+  // parameters
+  CommonParam common_param_;
+  EgoNearestParam ego_nearest_param_;
 
   Trajectory past_ego_state_trajectory_;
   TrajectoryInterpolatorParams params_;
