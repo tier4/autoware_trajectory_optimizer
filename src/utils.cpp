@@ -43,6 +43,10 @@ void smooth_trajectory_with_elastic_band(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr)
 {
+  if (!eb_path_smoother_ptr) {
+    RCLCPP_ERROR(get_logger(), "Elastic band path smoother is not initialized");
+    return;
+  }
   traj_points = eb_path_smoother_ptr->smoothTrajectory(traj_points, current_odometry.pose.pose);
   eb_path_smoother_ptr->resetPreviousData();
 }
@@ -111,6 +115,10 @@ void filter_velocity(
   const TrajectoryInterpolatorParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & smoother, const Odometry & current_odometry)
 {
+  if (!smoother) {
+    RCLCPP_ERROR(get_logger(), "JerkFilteredSmoother is not initialized");
+    return;
+  }
   // Lateral acceleration limit
   const auto & nearest_dist_threshold = params.nearest_dist_threshold_m;
   const auto & nearest_yaw_threshold = params.nearest_yaw_threshold_rad;
@@ -220,7 +228,9 @@ void interpolate_trajectory(
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr)
 {
   // Remove overlap points and wrong orientation points
-  utils::remove_invalid_points(traj_points);
+  if (params.fix_invalid_points) {
+    remove_invalid_points(traj_points);
+  }
 
   if (traj_points.size() < 2) {
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
@@ -246,18 +256,21 @@ void interpolate_trajectory(
       traj_points, static_cast<float>(initial_motion_speed),
       static_cast<float>(initial_motion_acc));
   }
-  // limit ego speed
-  set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
+  // Limit ego speed
+  if (params.limit_velocity) {
+    set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
+  }
 
   // Smooth velocity profile
   if (params.smooth_velocities) {
     filter_velocity(traj_points, initial_motion, params, jerk_filtered_smoother, current_odometry);
   }
   // Apply spline to smooth the trajectory
+  if (params.use_akima_spline_interpolation) {
+    apply_spline(traj_points, params);
+  }
+  // Use elastic band to smooth the trajectory
   if (params.smooth_trajectories) {
-    if (params.use_akima_spline_interpolation) {
-      apply_spline(traj_points, params);
-    }
     smooth_trajectory_with_elastic_band(traj_points, current_odometry, eb_path_smoother_ptr);
   }
   // Recalculate timestamps
