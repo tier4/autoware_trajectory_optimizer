@@ -21,7 +21,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 
   file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
-  ament_add_gtest(test_autoware_trajectory_interpolator
+  ament_add_ros_isolated_gtest(test_autoware_trajectory_interpolator
     ${TEST_SOURCES}
   )
   target_link_libraries(test_autoware_trajectory_interpolator

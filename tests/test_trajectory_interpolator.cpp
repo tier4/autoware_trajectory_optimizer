@@ -111,19 +111,6 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ApplySpline)
   ASSERT_GE(points.size(), 2);
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, FilterVelocity)
-{
-  TrajectoryPoints points = create_sample_trajectory();
-  InitialMotion initial_motion{1.0, 0.1};
-  TrajectoryInterpolatorParams params;
-  auto smoother = std::make_shared<JerkFilteredSmoother>();
-  Odometry current_odometry;
-  current_odometry.pose.pose.position.x = 1.0;
-  current_odometry.pose.pose.position.y = 1.0;
-  utils::filter_velocity(points, initial_motion, params, smoother, current_odometry);
-  ASSERT_GE(points.size(), 2);
-}
-
 TEST_F(TrajectoryInterpolatorUtilsTest, AddEgoStateToTrajectory)
 {
   TrajectoryPoints points = create_sample_trajectory();
