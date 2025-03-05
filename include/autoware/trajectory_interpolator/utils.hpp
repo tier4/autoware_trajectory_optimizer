@@ -72,6 +72,13 @@ void extend_trajectory_backward(
   const TrajectoryInterpolatorParams & params);
 
 /**
+ * @brief Checks if a pose is valid.
+ * @param pose The pose to be validated.
+ * @return True if the pose is valid, false otherwise.
+ */
+bool validate_pose(const geometry_msgs::msg::Pose & pose);
+
+/**
  * @brief Interpolates the given trajectory points based on trajectory length.
  *
  * @param traj_points The trajectory points to be interpolated.
