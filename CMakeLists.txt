@@ -22,6 +22,7 @@ if(BUILD_TESTING)
 
   file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
   ament_add_ros_isolated_gtest(test_autoware_trajectory_interpolator
+
     ${TEST_SOURCES}
   )
   target_link_libraries(test_autoware_trajectory_interpolator
