@@ -317,7 +317,7 @@ void add_ego_state_to_trajectory(
   double accumulated_length = 0.0;
   for (size_t i = traj_points.size() - 1; i > 0; i--) {
     accumulated_length += autoware_utils::calc_distance2d(traj_points.at(i - 1), traj_points.at(i));
-    if (accumulated_length > params.backward_path_extension_m) {
+    if (accumulated_length > params.backward_trajectory_extension_m) {
       clip_idx = i;
       break;
     }

@@ -104,7 +104,8 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   update_param<double>(parameters, "max_speed_mps", params.max_speed_mps);
   update_param<double>(
     parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
-  update_param<double>(parameters, "backward_path_extension_m", params.backward_path_extension_m);
+  update_param<double>(
+    parameters, "backward_trajectory_extension_m", params.backward_trajectory_extension_m);
   update_param<bool>(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
@@ -166,8 +167,8 @@ void TrajectoryInterpolator::set_up_params()
   params_.max_speed_mps = get_or_declare_parameter<double>(*this, "max_speed_mps");
   params_.spline_interpolation_resolution_m =
     get_or_declare_parameter<double>(*this, "spline_interpolation_resolution_m");
-  params_.backward_path_extension_m =
-    get_or_declare_parameter<double>(*this, "backward_path_extension_m");
+  params_.backward_trajectory_extension_m =
+    get_or_declare_parameter<double>(*this, "backward_trajectory_extension_m");
   params_.use_akima_spline_interpolation =
     get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
@@ -221,14 +222,14 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
     return;
   }
 
-  if (previous_trajectory_ptr_ && params_.extend_trajectory_backward) {
+  if (params_.extend_trajectory_backward) {
     utils::add_ego_state_to_trajectory(
       past_ego_state_trajectory_.points, *current_odometry_ptr_, params_);
   }
 
   Trajectories output_trajectories = *msg;
   for (auto & trajectory : output_trajectories.trajectories) {
-    if (previous_trajectory_ptr_ && params_.extend_trajectory_backward) {
+    if (params_.extend_trajectory_backward) {
       utils::expand_trajectory_with_ego_history(
         trajectory.points, past_ego_state_trajectory_.points);
     }
