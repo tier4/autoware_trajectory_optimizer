@@ -79,7 +79,7 @@ public:
    * @param points Vector of points
    * @return True if the build is successful
    */
-  bool build(const std::vector<PointType> & points);
+  interpolator::InterpolationResult build(const std::vector<PointType> & points);
 
   /**
    * @brief Compute the point on the trajectory at a given s value
