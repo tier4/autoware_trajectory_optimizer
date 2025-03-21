@@ -17,6 +17,7 @@
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 #include "autoware/trajectory/pose.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -32,7 +33,8 @@
 namespace autoware::trajectory_interpolator::utils
 {
 using autoware::trajectory::interpolator::AkimaSpline;
-using InterpolationTrajectory = autoware::trajectory::Trajectory<TrajectoryPoint>;
+using InterpolationTrajectory =
+  autoware::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 rclcpp::Logger get_logger()
 {
@@ -176,22 +178,22 @@ bool validate_pose(const geometry_msgs::msg::Pose & pose)
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
 {
-  std::optional<InterpolationTrajectory> interpolation_trajectory_util =
+  auto trajectory_interpolation_util =
     InterpolationTrajectory::Builder{}
       .set_xy_interpolator<AkimaSpline>()  // Set interpolator for x-y plane
       .build(traj_points);
-  if (!interpolation_trajectory_util) {
+  if (!trajectory_interpolation_util) {
     RCLCPP_WARN(get_logger(), "Failed to build interpolation trajectory");
     return;
   }
-  interpolation_trajectory_util->align_orientation_with_trajectory_direction();
-  TrajectoryPoints output_points;
-  output_points.reserve(traj_points.size());
+  trajectory_interpolation_util->align_orientation_with_trajectory_direction();
+  TrajectoryPoints output_points{traj_points.front()};
+  constexpr double epsilon{1e-2};
+  const auto ds = std::max(params.spline_interpolation_resolution_m, epsilon);
+  output_points.reserve(static_cast<size_t>(trajectory_interpolation_util->length() / ds));
 
-  const auto ds = params.spline_interpolation_resolution_m;
-
-  for (auto s = 0.0; s <= interpolation_trajectory_util->length(); s += ds) {
-    auto p = interpolation_trajectory_util->compute(s);
+  for (auto s = ds; s <= trajectory_interpolation_util->length(); s += ds) {
+    auto p = trajectory_interpolation_util->compute(s);
     if (!validate_pose(p.pose)) {
       continue;
     }
@@ -202,7 +204,6 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
     RCLCPP_WARN(get_logger(), "Not enough points in trajectory after akima spline interpolation");
     return;
   }
-  constexpr double epsilon{1e-2};
   auto last_interpolated_point = output_points.back();
   auto & original_trajectory_last_point = traj_points.back();
 

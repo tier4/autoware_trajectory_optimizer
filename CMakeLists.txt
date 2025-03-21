@@ -8,7 +8,6 @@ autoware_package()
 ament_auto_add_library(autoware_trajectory_interpolator_component SHARED
   src/trajectory_interpolator.cpp
   src/utils.cpp
-  src/trajectory_point.cpp
 )
 target_link_libraries(autoware_trajectory_interpolator_component)
 rclcpp_components_register_node(autoware_trajectory_interpolator_component
