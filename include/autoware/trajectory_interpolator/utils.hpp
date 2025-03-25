@@ -18,7 +18,6 @@
 #include "autoware/path_smoother/elastic_band.hpp"
 #include "autoware/path_smoother/replan_checker.hpp"
 #include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
-#include "autoware/trajectory_interpolator/trajectory_point.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <rclcpp/logger.hpp>
