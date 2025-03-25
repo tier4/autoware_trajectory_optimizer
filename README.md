@@ -15,26 +15,6 @@ This package depends on the following packages:
 - `autoware_velocity_smoother`: Ensures that the velocity profile of the trajectory is smooth and feasible.
 - `autoware_path_smoother`: Smooths the path to ensure that the trajectory is continuous and drivable.
 
-## Installation
-
-To install the `autoware_trajectory_interpolator` package, follow these steps:
-
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/autowarefoundation/autoware.git
-    ```
-2. Navigate to the package directory:
-    ```sh
-    cd /home/danielsanchez/pilot-auto/src/autoware/trajectory_generator/autoware_trajectory_interpolator
-    ```
-3. Install dependencies:
-    ```sh
-    rosdep install --from-paths src --ignore-src -r -y
-    ```
-4. Build the package:
-    ```sh
-    colcon build
-    ```
 
 ## Configuration
 
@@ -56,14 +36,6 @@ The behavior of the `autoware_trajectory_interpolator` can be configured using t
 - `publish_last_trajectory`: Publish the previous trajectory selected by the `autoware_trajectory_ranker` package along with the interpolated new trajectories coming from the trajectory generator.
 - `keep_last_trajectory`: with this flag on, the module will only publish the previous trajectory selected by the `autoware_trajectory_ranker` for `keep_last_trajectory_s` seconds.
 - `extend_trajectory_backward`: flag used to indicate if the ego's trajectory should be extended backward.
-
-## Usage
-
-To use the `autoware_trajectory_interpolator` package, launch the node with the appropriate configuration:
-
-```sh
-roslaunch autoware_trajectory_interpolator trajectory_interpolator.launch
-```
 
 ## License
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
