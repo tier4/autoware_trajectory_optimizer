@@ -274,6 +274,10 @@ void interpolate_trajectory(
   if (params.smooth_trajectories) {
     smooth_trajectory_with_elastic_band(traj_points, current_odometry, eb_path_smoother_ptr);
   }
+
+  if (params.fix_invalid_points) {
+    remove_invalid_points(traj_points);
+  }
   // Recalculate timestamps
   motion_utils::calculate_time_from_start(traj_points, current_odometry.pose.pose.position);
 
