@@ -1,3 +1,4 @@
+# Autoware Trajectory Interpolator
 The `autoware_trajectory_interpolator` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow. The interpolation methods for the path include the elastic band smoother and the Akima spline. Additionally, velocity smoothing can be achieved using assets from the `autoware_velocity_smoother` package.
 
 The `autoware_trajectory_interpolator` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow.
@@ -14,7 +15,6 @@ This package depends on the following packages:
 
 - `autoware_velocity_smoother`: Ensures that the velocity profile of the trajectory is smooth and feasible.
 - `autoware_path_smoother`: Smooths the path to ensure that the trajectory is continuous and drivable.
-
 
 ## Configuration
 
@@ -38,5 +38,5 @@ The behavior of the `autoware_trajectory_interpolator` can be configured using t
 - `extend_trajectory_backward`: flag used to indicate if the ego's trajectory should be extended backward.
 
 ## License
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

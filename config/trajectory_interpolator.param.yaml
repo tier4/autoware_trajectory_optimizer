@@ -1,11 +1,11 @@
 /**:
   ros__parameters:
-    keep_last_trajectory_s: 0.5  # [s]
-    nearest_dist_threshold_m: 0.5  # [m]
-    nearest_yaw_threshold_rad: 1.0  # [rad]
-    target_pull_out_speed_mps: 1.0  # [mps]
-    target_pull_out_acc_mps2: 1.0  # [mps2]
-    max_speed_mps: 5.0  # [mps]
+    keep_last_trajectory_s: 0.5 # [s]
+    nearest_dist_threshold_m: 0.5 # [m]
+    nearest_yaw_threshold_rad: 1.0 # [rad]
+    target_pull_out_speed_mps: 1.0 # [mps]
+    target_pull_out_acc_mps2: 1.0 # [mps2]
+    max_speed_mps: 5.0 # [mps]
     spline_interpolation_resolution_m: 0.5 # [m]
     backward_trajectory_extension_m: 5.0 # [m]
     use_akima_spline_interpolation: true
