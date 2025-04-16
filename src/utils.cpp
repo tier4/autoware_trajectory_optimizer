@@ -32,9 +32,9 @@
 
 namespace autoware::trajectory_interpolator::utils
 {
-using autoware::trajectory::interpolator::AkimaSpline;
+using autoware::experimental::trajectory::interpolator::AkimaSpline;
 using InterpolationTrajectory =
-  autoware::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 rclcpp::Logger get_logger()
 {
