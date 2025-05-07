@@ -59,6 +59,13 @@ void remove_invalid_points(TrajectoryPoints & input_trajectory)
     RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
     return;
   }
+  // remove points with nan or inf values
+  input_trajectory.erase(
+    std::remove_if(
+      input_trajectory.begin(), input_trajectory.end(),
+      [](const TrajectoryPoint & point) { return !validate_point(point); }),
+    input_trajectory.end());
+
   utils::remove_close_proximity_points(input_trajectory, 1E-2);
   const bool is_driving_forward = true;
   autoware::motion_utils::insertOrientation(input_trajectory, is_driving_forward);
@@ -165,15 +172,17 @@ void filter_velocity(
   }
 }
 
-bool validate_pose(const geometry_msgs::msg::Pose & pose)
+bool validate_point(const TrajectoryPoint & point)
 {
-  return std::isfinite(pose.position.x) && std::isfinite(pose.position.y) &&
-         std::isfinite(pose.position.z) && std::isfinite(pose.orientation.x) &&
-         std::isfinite(pose.orientation.y) && std::isfinite(pose.orientation.z) &&
-         std::isfinite(pose.orientation.w) && !std::isnan(pose.position.x) &&
-         !std::isnan(pose.position.y) && !std::isnan(pose.position.z) &&
-         !std::isnan(pose.orientation.x) && !std::isnan(pose.orientation.y) &&
-         !std::isnan(pose.orientation.z) && !std::isnan(pose.orientation.w);
+  return std::isfinite(point.longitudinal_velocity_mps) && std::isfinite(point.acceleration_mps2) &&
+         std::isfinite(point.pose.position.x) && std::isfinite(point.pose.position.y) &&
+         std::isfinite(point.pose.position.z) && std::isfinite(point.pose.orientation.x) &&
+         std::isfinite(point.pose.orientation.y) && std::isfinite(point.pose.orientation.z) &&
+         std::isfinite(point.pose.orientation.w) && !std::isnan(point.pose.position.x) &&
+         !std::isnan(point.pose.position.y) && !std::isnan(point.pose.position.z) &&
+         !std::isnan(point.pose.orientation.x) && !std::isnan(point.pose.orientation.y) &&
+         !std::isnan(point.pose.orientation.z) && !std::isnan(point.pose.orientation.w) &&
+         !std::isnan(point.longitudinal_velocity_mps) && !std::isnan(point.acceleration_mps2);
 }
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
@@ -194,7 +203,7 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
 
   for (auto s = ds; s <= trajectory_interpolation_util->length(); s += ds) {
     auto p = trajectory_interpolation_util->compute(s);
-    if (!validate_pose(p.pose)) {
+    if (!validate_point(p)) {
       continue;
     }
     output_points.push_back(p);
@@ -207,7 +216,7 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
   auto last_interpolated_point = output_points.back();
   auto & original_trajectory_last_point = traj_points.back();
 
-  if (!validate_pose(original_trajectory_last_point.pose)) {
+  if (!validate_point(original_trajectory_last_point)) {
     RCLCPP_WARN(get_logger(), "Last point in original trajectory is invalid. Removing last point");
     traj_points = output_points;
     return;

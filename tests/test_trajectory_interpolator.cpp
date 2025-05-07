@@ -85,21 +85,23 @@ TEST_F(TrajectoryInterpolatorUtilsTest, SetMaxVelocity)
   }
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, ValidatePose)
+TEST_F(TrajectoryInterpolatorUtilsTest, ValidatePoint)
 {
-  Pose valid_pose;
-  valid_pose.position.x = 1.0;
-  valid_pose.position.y = 1.0;
-  valid_pose.position.z = 1.0;
-  valid_pose.orientation.x = 0.0;
-  valid_pose.orientation.y = 0.0;
-  valid_pose.orientation.z = 0.0;
-  valid_pose.orientation.w = 1.0;
-  ASSERT_TRUE(utils::validate_pose(valid_pose));
+  TrajectoryPoint valid_point;
+  valid_point.longitudinal_velocity_mps = 1.0;
+  valid_point.acceleration_mps2 = 0.1;
+  valid_point.pose.position.x = 1.0;
+  valid_point.pose.position.y = 1.0;
+  valid_point.pose.position.z = 1.0;
+  valid_point.pose.orientation.x = 0.0;
+  valid_point.pose.orientation.y = 0.0;
+  valid_point.pose.orientation.z = 0.0;
+  valid_point.pose.orientation.w = 1.0;
+  ASSERT_TRUE(utils::validate_point(valid_point));
 
-  Pose invalid_pose;
-  invalid_pose.position.x = std::nan("");
-  ASSERT_FALSE(utils::validate_pose(invalid_pose));
+  TrajectoryPoint invalid_point;
+  invalid_point.pose.position.x = std::nan("");
+  ASSERT_FALSE(utils::validate_point(invalid_point));
 }
 
 TEST_F(TrajectoryInterpolatorUtilsTest, ApplySpline)

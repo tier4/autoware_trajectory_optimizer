@@ -29,6 +29,7 @@
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
+#include <geometry_msgs/msg/detail/point__struct.hpp>
 #include <nav_msgs/msg/detail/odometry__struct.hpp>
 
 #include <memory>
@@ -71,11 +72,11 @@ void extend_trajectory_backward(
   const TrajectoryInterpolatorParams & params);
 
 /**
- * @brief Checks if a pose is valid.
- * @param pose The pose to be validated.
- * @return True if the pose is valid, false otherwise.
+ * @brief Checks if a trajectory point is valid.
+ * @param point The point to be validated.
+ * @return True if the trajectory point is valid, false otherwise.
  */
-bool validate_pose(const geometry_msgs::msg::Pose & pose);
+bool validate_point(const TrajectoryPoint & point);
 
 /**
  * @brief Interpolates the given trajectory points based on trajectory length.
