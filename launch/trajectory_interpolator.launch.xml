@@ -10,6 +10,7 @@
   <arg name="elastic_band_param_path" default="$(find-pkg-share autoware_trajectory_interpolator)/config/trajectory_smoothing/elastic_band_smoother.param.yaml"/>
 
   <arg name="input_traj" default="mtr/trajectory"/>
+  <arg name="input_trajectories" default="mtr/trajectories"/>
   <arg name="output_traj" default="smoothed/mtr/trajectory"/>
   <arg name="output_trajectories" default="smoothed/mtr/trajectories"/>
 
@@ -23,6 +24,7 @@
    <remap from="~/output/trajectory" to="$(var output_traj)"/>
    <remap from="~/output/trajectories" to="$(var output_trajectories)"/>
    <remap from="~/input/traj" to="$(var input_traj)"/>
+   <remap from="~/input/trajectories" to="$(var input_trajectories)"/>
    <remap from="~/input/odometry" to="/localization/kinematic_state"/>
    <remap from="~/input/acceleration" to="/localization/acceleration"/>
    <remap from="~/input/previous_trajectory" to="/planning/scenario_planning/trajectory"/>

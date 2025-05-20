@@ -78,7 +78,7 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
 
   // interface subscriber
   trajectories_sub_ = create_subscription<Trajectories>(
-    "mtr/trajectories", 1,
+    "~/input/trajectories", 1,
     std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
   // interface publisher
   trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
