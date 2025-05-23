@@ -15,4 +15,4 @@
     smooth_velocities: false
     publish_last_trajectory: false
     keep_last_trajectory: false
-    extend_trajectory_backward: true
+    extend_trajectory_backward: false
