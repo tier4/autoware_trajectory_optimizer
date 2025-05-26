@@ -27,6 +27,7 @@
 
 #include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -340,12 +341,35 @@ void add_ego_state_to_trajectory(
 }
 
 void expand_trajectory_with_ego_history(
-  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points)
+  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points,
+  const Odometry & current_odometry, const TrajectoryInterpolatorParams & params)
 {
   if (ego_history_points.empty() || traj_points.empty()) {
     return;
   }
 
-  traj_points.insert(traj_points.begin(), ego_history_points.begin(), ego_history_points.end());
+  const auto & first_trajectory_point = traj_points.front();
+  const auto distance_to_first_point = std::abs(autoware::motion_utils::calcSignedArcLength(
+    traj_points, first_trajectory_point.pose.position, current_odometry.pose.pose.position));
+
+  const auto first_traj_point_position = traj_points.front().pose.position;
+
+  std::for_each(ego_history_points.rbegin(), ego_history_points.rend(), [&](auto point) {
+    const auto arc_length = autoware::motion_utils::calcSignedArcLength(
+      traj_points, first_traj_point_position, point.pose.position);
+    const auto distance = std::abs(arc_length);
+
+    const bool is_outside_of_relevant_range =
+      distance < distance_to_first_point || distance > params.backward_trajectory_extension_m;
+    const bool is_ahead_of_first_point = arc_length > 0.0;
+
+    if (is_ahead_of_first_point || is_outside_of_relevant_range) {
+      return;  // Skip points that are ahead of the first trajectory point
+      // Skip points that are too close or too far from the first trajectory point
+    }
+
+    point.longitudinal_velocity_mps = traj_points.front().longitudinal_velocity_mps;
+    traj_points.insert(traj_points.begin(), point);
+  });
 }
 }  // namespace autoware::trajectory_interpolator::utils

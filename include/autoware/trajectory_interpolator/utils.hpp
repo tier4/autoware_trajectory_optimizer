@@ -178,7 +178,8 @@ void add_ego_state_to_trajectory(
  * @param ego_history_points The ego history points to be added.
  */
 void expand_trajectory_with_ego_history(
-  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points);
+  TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points,
+  const Odometry & current_odometry, const TrajectoryInterpolatorParams & params);
 
 };  // namespace autoware::trajectory_interpolator::utils
 
