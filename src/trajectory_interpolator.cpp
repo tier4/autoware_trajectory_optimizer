@@ -231,7 +231,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   for (auto & trajectory : output_trajectories.trajectories) {
     if (params_.extend_trajectory_backward) {
       utils::expand_trajectory_with_ego_history(
-        trajectory.points, past_ego_state_trajectory_.points);
+        trajectory.points, past_ego_state_trajectory_.points, *current_odometry_ptr_, params_);
     }
     utils::interpolate_trajectory(
       trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_, params_,

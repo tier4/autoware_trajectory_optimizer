@@ -31,13 +31,13 @@ using namespace geometry_msgs::msg;
 class TrajectoryInterpolatorUtilsTest : public ::testing::Test
 {
 protected:
-  TrajectoryPoints create_sample_trajectory(double resolution = 1.0)
+  TrajectoryPoints create_sample_trajectory(double resolution = 1.0, double offset = 0.0)
   {
     TrajectoryPoints points;
     for (int i = 0; i < 10; ++i) {
       TrajectoryPoint point;
-      point.pose.position.x = i * resolution;
-      point.pose.position.y = i * resolution;
+      point.pose.position.x = i * resolution + offset;
+      point.pose.position.y = i * resolution + offset;
       point.longitudinal_velocity_mps = 1.0;
       point.acceleration_mps2 = 0.1;
       points.push_back(point);
@@ -127,8 +127,13 @@ TEST_F(TrajectoryInterpolatorUtilsTest, AddEgoStateToTrajectory)
 TEST_F(TrajectoryInterpolatorUtilsTest, ExpandTrajectoryWithEgoHistory)
 {
   TrajectoryPoints points = create_sample_trajectory();
-  TrajectoryPoints ego_history_points = create_sample_trajectory();
-  utils::expand_trajectory_with_ego_history(points, ego_history_points);
+  TrajectoryPoints ego_history_points = create_sample_trajectory(1.0, -10.0);
+  Odometry current_odometry;
+  TrajectoryInterpolatorParams params;
+  params.backward_trajectory_extension_m = 15.0;
+  current_odometry.pose.pose.position.x = points.front().pose.position.x;
+  current_odometry.pose.pose.position.y = points.front().pose.position.y;
+  utils::expand_trajectory_with_ego_history(points, ego_history_points, current_odometry, params);
   ASSERT_GE(points.size(), 20);
 }
 
