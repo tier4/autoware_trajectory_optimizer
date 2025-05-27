@@ -1,0 +1,45 @@
+// Copyright 2025 TIER IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef AUTOWARE__TRAJECTORY_VELOCITY_LIMITER_HPP_
+#define AUTOWARE__TRAJECTORY_VELOCITY_LIMITER_HPP_
+#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
+
+#include <autoware_utils/system/time_keeper.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <autoware_planning_msgs/msg/trajectory.hpp>
+#include <autoware_planning_msgs/msg/trajectory_point.hpp>
+
+namespace autoware::trajectory_interpolator::plugin
+{
+using autoware_planning_msgs::msg::TrajectoryPoint;
+using TrajectoryPoints = std::vector<TrajectoryPoint>;
+
+class TrajectoryVelocityLimiter : TrajectoryOptimizerPluginBase
+{
+public:
+  TrajectoryVelocityLimiter(std::string & name, const rclcpp::Node::SharedPtr node_ptr)
+  : TrajectoryOptimizerPluginBase(name, node_ptr)
+  {
+  }
+  void optimize_trajectory(
+    TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) override;
+  void set_up_params() override;
+  rcl_interfaces::msg::SetParametersResult on_parameter(
+    const std::vector<rclcpp::Parameter> & parameters) override;
+};
+}  // namespace autoware::trajectory_interpolator::plugin
+
+#endif  // AUTOWARE__TRAJECTORY_VELOCITY_LIMITER_HPP_
