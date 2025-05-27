@@ -33,13 +33,12 @@ class TrajectoryVelocityOptimizer : public TrajectoryOptimizerPluginBase
 {
 public:
   TrajectoryVelocityOptimizer(
-    std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+    const std::string name, rclcpp::Node * node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
     const TrajectoryInterpolatorParams & params);
 
   void set_up_velocity_smoother(
-    const rclcpp::Node::SharedPtr node_ptr,
-    const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+    rclcpp::Node * node_ptr, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
   void optimize_trajectory(
     TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) override;
   void set_up_params() override;

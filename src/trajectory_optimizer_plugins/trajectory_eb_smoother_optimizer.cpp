@@ -22,26 +22,20 @@ namespace autoware::trajectory_interpolator::plugin
 {
 
 TrajectoryEBSmootherOptimizer::TrajectoryEBSmootherOptimizer(
-  std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+  const std::string name, rclcpp::Node * node_ptr,
   const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
   const TrajectoryInterpolatorParams & params)
 : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
 {
-  set_up_elastic_band_smoother();
-}
-
-void TrajectoryEBSmootherOptimizer::set_up_elastic_band_smoother()
-{
-  // parameters
   // parameters for ego nearest search
-  ego_nearest_param_ = EgoNearestParam(get_node_ptr().get());
-
+  ego_nearest_param_ = EgoNearestParam(node_ptr);
   // parameters for trajectory
-  common_param_ = CommonParam(get_node_ptr().get());
+  common_param_ = CommonParam(node_ptr);
   smoother_time_keeper_ptr_ = std::make_shared<SmootherTimekeeper>();
   eb_path_smoother_ptr_ = std::make_shared<EBPathSmoother>(
-    get_node_ptr(), false, ego_nearest_param_, common_param_, smoother_time_keeper_ptr_);
+    node_ptr, false, ego_nearest_param_, common_param_, smoother_time_keeper_ptr_);
   eb_path_smoother_ptr_->initialize(false, common_param_);
+  eb_path_smoother_ptr_->resetPreviousData();
 }
 
 void TrajectoryEBSmootherOptimizer::optimize_trajectory(

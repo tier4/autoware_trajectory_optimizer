@@ -32,7 +32,7 @@ class TrajectoryExtender : TrajectoryOptimizerPluginBase
 {
 public:
   TrajectoryExtender(
-    std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+    const std::string name, rclcpp::Node * node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
     const TrajectoryInterpolatorParams & params)
   : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)

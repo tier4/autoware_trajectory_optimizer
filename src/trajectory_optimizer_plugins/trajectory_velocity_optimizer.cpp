@@ -22,7 +22,7 @@ namespace autoware::trajectory_interpolator::plugin
 {
 
 TrajectoryVelocityOptimizer::TrajectoryVelocityOptimizer(
-  std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+  const std::string name, rclcpp::Node * node_ptr,
   const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
   const TrajectoryInterpolatorParams & params)
 : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
@@ -33,13 +33,12 @@ TrajectoryVelocityOptimizer::TrajectoryVelocityOptimizer(
 }
 
 void TrajectoryVelocityOptimizer::set_up_velocity_smoother(
-  const rclcpp::Node::SharedPtr node_ptr,
-  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+  rclcpp::Node * node_ptr, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
 {
   const auto vehicle_info =
     autoware::vehicle_info_utils::VehicleInfoUtils(*node_ptr).getVehicleInfo();
   double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
-  jerk_filtered_smoother_ = std::make_shared<JerkFilteredSmoother>(node_ptr, time_keeper);
+  jerk_filtered_smoother_ = std::make_shared<JerkFilteredSmoother>(*node_ptr, time_keeper);
   jerk_filtered_smoother_->setWheelBase(wheelbase);
 }
 
@@ -90,6 +89,7 @@ void TrajectoryVelocityOptimizer::set_up_params()
 rcl_interfaces::msg::SetParametersResult TrajectoryVelocityOptimizer::on_parameter(
   [[maybe_unused]] const std::vector<rclcpp::Parameter> & parameters)
 {
+  // TODO: Add option to update params (not included in the jerkfiltered_smoother)
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason = "success";
