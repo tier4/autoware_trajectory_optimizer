@@ -58,19 +58,6 @@ void smooth_trajectory_with_elastic_band(
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr);
 
 /**
- * @brief Adds parts of the previous trajectory to the current trajectory.
- *
- * @param traj_points The trajectory points to be extended
- * @param previous_trajectory Pointer to previous trajectory.
- * @param current_odometry Ego odometry.
- * @param backward_length How much to extend the path backward.
- */
-void extend_trajectory_backward(
-  TrajectoryPoints & traj_points, const TrajectoryPoints & previous_trajectory,
-  const Odometry & current_odometry, const double backward_length,
-  const TrajectoryInterpolatorParams & params);
-
-/**
  * @brief Checks if a trajectory point is valid.
  * @param point The point to be validated.
  * @return True if the trajectory point is valid, false otherwise.
