@@ -25,14 +25,14 @@
 
 #include <rclcpp/subscription.hpp>
 
-#include "geometry_msgs/msg/accel_with_covariance_stamped.hpp"
-#include "nav_msgs/msg/odometry.hpp"
 #include <autoware_new_planning_msgs/msg/trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
+#include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <string>
 #include <vector>

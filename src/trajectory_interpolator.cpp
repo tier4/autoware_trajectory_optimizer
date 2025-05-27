@@ -110,7 +110,8 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   update_param<bool>(parameters, "smooth_trajectories", params.smooth_trajectories);
-  update_param<bool>(parameters, "limit_velocity", params.limit_velocity);
+  update_param<bool>(parameters, "limit_speed", params.limit_speed);
+  update_param<bool>(parameters, "set_engage_speed", params.set_engage_speed);
   update_param<bool>(parameters, "fix_invalid_points", params.fix_invalid_points);
   update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   update_param<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
@@ -173,7 +174,9 @@ void TrajectoryInterpolator::set_up_params()
     get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
   params_.smooth_trajectories = get_or_declare_parameter<bool>(*this, "smooth_trajectories");
-  params_.limit_velocity = get_or_declare_parameter<bool>(*this, "limit_velocity");
+  params_.limit_speed = get_or_declare_parameter<bool>(*this, "limit_speed");
+  params_.set_engage_speed = get_or_declare_parameter<bool>(*this, "set_engage_speed");
+
   params_.fix_invalid_points = get_or_declare_parameter<bool>(*this, "fix_invalid_points");
 
   params_.publish_last_trajectory =

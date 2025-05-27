@@ -259,21 +259,21 @@ void interpolate_trajectory(
   auto initial_motion_acc = (current_speed > target_pull_out_speed_mps)
                               ? current_linear_acceleration
                               : target_pull_out_acc_mps2;
-  InitialMotion initial_motion{initial_motion_speed, initial_motion_acc};
 
   // Set engage speed and acceleration
-  if (current_speed < target_pull_out_speed_mps) {
+  if (params.set_engage_speed && (current_speed < target_pull_out_speed_mps)) {
     clamp_velocities(
       traj_points, static_cast<float>(initial_motion_speed),
       static_cast<float>(initial_motion_acc));
   }
   // Limit ego speed
-  if (params.limit_velocity) {
+  if (params.limit_speed) {
     set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
   }
 
   // Smooth velocity profile
   if (params.smooth_velocities) {
+    InitialMotion initial_motion{initial_motion_speed, initial_motion_acc};
     filter_velocity(traj_points, initial_motion, params, jerk_filtered_smoother, current_odometry);
   }
   // Apply spline to smooth the trajectory

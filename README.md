@@ -31,7 +31,7 @@ The behavior of the `autoware_trajectory_interpolator` can be configured using t
 - `backward_trajectory_extension_m`: How long should the ego trajectory extend backward. This backward trajectory is built using the ego's previous poses.
 - `use_akima_spline_interpolation`: To use akima spline interpolation to smooth the trajectories.
 - `smooth_trajectories`: Flag to indicate if the Elastic Band smoother should be applied on the input trajectories.
-- `limit_velocity`: Flag to indicate if a `max_speed_mps` speed limit should be applied to the trajectories.
+- `limit_speed`: Flag to indicate if a `max_speed_mps` speed limit should be applied to the trajectories.
 - `fix_invalid_points`: If the module should remove repeated or invalid points, or points that go against the general trajectory direction.
 - `smooth_velocities`: Apply velocity smoothing to the input trajectories.
 - `publish_last_trajectory`: Publish the previous trajectory selected by the `autoware_trajectory_ranker` package along with the interpolated new trajectories coming from the trajectory generator.

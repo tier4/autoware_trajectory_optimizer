@@ -10,7 +10,8 @@
     backward_trajectory_extension_m: 5.0 # [m]
     use_akima_spline_interpolation: true
     smooth_trajectories: true
-    limit_velocity: true
+    limit_speed: true
+    set_engage_speed: true
     fix_invalid_points: true
     smooth_velocities: false
     publish_last_trajectory: false
