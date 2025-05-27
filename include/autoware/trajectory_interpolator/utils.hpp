@@ -55,7 +55,6 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 void smooth_trajectory_with_elastic_band(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const CommonParam & common_param, const EgoNearestParam & ego_nearest_param,
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr);
 
 /**
@@ -120,15 +119,14 @@ void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
  * @brief Filters the velocity of the input trajectory based on the initial motion and parameters.
  *
  * @param input_trajectory The trajectory points to be filtered.
- * @param initial_motion_speed The initial speed for motion.
- * @param initial_motion_acc The initial acceleration for motion.
+ * @param initial_motion_speed The initial speed and acceleration for motion.
  * @param params The parameters for trajectory interpolation.
  * @param smoother The smoother to be used for filtering the trajectory.
  * @param current_odometry The current odometry data.
  */
 void filter_velocity(
-  std::vector<TrajectoryPoint> & input_trajectory, const double initial_motion_speed,
-  const double initial_motion_acc, const TrajectoryInterpolatorParams & params,
+  TrajectoryPoints & input_trajectory, const InitialMotion & initial_motion,
+  const TrajectoryInterpolatorParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & smoother, const Odometry & current_odometry);
 
 /**

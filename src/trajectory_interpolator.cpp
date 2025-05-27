@@ -203,6 +203,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
   current_odometry_ptr_ = sub_current_odometry_.take_data();
   current_acceleration_ptr_ = sub_current_acceleration_.take_data();
+  params_.current_odometry = *current_odometry_ptr_;
+  params_.current_acceleration = *current_acceleration_ptr_;
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
   const auto keep_last_trajectory = params_.keep_last_trajectory;
