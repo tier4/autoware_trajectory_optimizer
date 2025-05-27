@@ -12,13 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_velocity_limiter.hpp"
+#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_velocity_optimizer.hpp"
 
 #include "autoware/trajectory_interpolator/utils.hpp"
 
+#include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
+
 namespace autoware::trajectory_interpolator::plugin
 {
-void TrajectoryVelocityLimiter::optimize_trajectory(
+
+TrajectoryVelocityOptimizer::TrajectoryVelocityOptimizer(
+  std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
+  const TrajectoryInterpolatorParams & params)
+: TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
+{
+  if (params.smooth_velocities) {
+    set_up_velocity_smoother(node_ptr, time_keeper);
+  }
+}
+
+void TrajectoryVelocityOptimizer::set_up_velocity_smoother(
+  const rclcpp::Node::SharedPtr node_ptr,
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+{
+  const auto vehicle_info =
+    autoware::vehicle_info_utils::VehicleInfoUtils(*node_ptr).getVehicleInfo();
+  double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
+  jerk_filtered_smoother_ = std::make_shared<JerkFilteredSmoother>(node_ptr, time_keeper);
+  jerk_filtered_smoother_->setWheelBase(wheelbase);
+}
+
+void TrajectoryVelocityOptimizer::optimize_trajectory(
   TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryInterpolatorParams & params)
 {
   const auto & current_odometry = params.current_odometry;
@@ -41,17 +66,28 @@ void TrajectoryVelocityLimiter::optimize_trajectory(
       traj_points, static_cast<float>(initial_motion_speed),
       static_cast<float>(initial_motion_acc));
   }
+
   // Limit ego speed
   if (params.limit_speed) {
     utils::set_max_velocity(traj_points, static_cast<float>(max_speed_mps));
   }
+
+  // Smooth velocity profile
+  if (params.smooth_velocities) {
+    if (!jerk_filtered_smoother_) {
+      set_up_velocity_smoother(get_node_ptr(), get_time_keeper());
+    }
+    InitialMotion initial_motion{initial_motion_speed, initial_motion_acc};
+    utils::filter_velocity(
+      traj_points, initial_motion, params, jerk_filtered_smoother_, current_odometry);
+  }
 }
 
-void TrajectoryVelocityLimiter::set_up_params()
+void TrajectoryVelocityOptimizer::set_up_params()
 {
 }
 
-rcl_interfaces::msg::SetParametersResult TrajectoryVelocityLimiter::on_parameter(
+rcl_interfaces::msg::SetParametersResult TrajectoryVelocityOptimizer::on_parameter(
   [[maybe_unused]] const std::vector<rclcpp::Parameter> & parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;

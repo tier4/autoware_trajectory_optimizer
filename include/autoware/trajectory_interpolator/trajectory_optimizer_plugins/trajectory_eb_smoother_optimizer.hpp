@@ -12,37 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
-#define AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
+#ifndef AUTOWARE__TRAJECTORY_EB_SMOOTHER_OPTIMIZER_HPP_
+#define AUTOWARE__TRAJECTORY_EB_SMOOTHER_OPTIMIZER_HPP_
+#include "autoware/path_smoother/elastic_band.hpp"
+#include "autoware/path_smoother/replan_checker.hpp"
 #include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
 
-#include <autoware_utils/system/time_keeper.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 
+#include <memory>
+
 namespace autoware::trajectory_interpolator::plugin
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using autoware::path_smoother::CommonParam;
+using autoware::path_smoother::EBPathSmoother;
+using autoware::path_smoother::EgoNearestParam;
+using autoware::path_smoother::ReplanChecker;
+using SmootherTimekeeper = autoware::path_smoother::TimeKeeper;
 
-class TrajectoryPointFixer : TrajectoryOptimizerPluginBase
+class TrajectoryEBSmootherOptimizer : public TrajectoryOptimizerPluginBase
 {
 public:
-  TrajectoryPointFixer(
+  TrajectoryEBSmootherOptimizer(
     std::string & name, const rclcpp::Node::SharedPtr node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
-    const TrajectoryInterpolatorParams & params)
-  : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
-  {
-  }
+    const TrajectoryInterpolatorParams & params);
+
+  void set_up_elastic_band_smoother();
   void optimize_trajectory(
     TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) override;
   void set_up_params() override;
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters) override;
+
+private:
+  CommonParam common_param_{};
+  EgoNearestParam ego_nearest_param_;
+  std::shared_ptr<EBPathSmoother> eb_path_smoother_ptr_{nullptr};
+  mutable std::shared_ptr<SmootherTimekeeper> smoother_time_keeper_ptr_{nullptr};
 };
 }  // namespace autoware::trajectory_interpolator::plugin
 
-#endif  // AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
+#endif  // AUTOWARE__TRAJECTORY_EB_SMOOTHER_OPTIMIZER_HPP_

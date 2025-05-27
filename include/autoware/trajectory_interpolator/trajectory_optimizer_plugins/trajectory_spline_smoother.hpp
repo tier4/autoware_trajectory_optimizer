@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
-#define AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
+#ifndef AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_
+#define AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_
 #include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
 
 #include <autoware_utils/system/time_keeper.hpp>
@@ -27,10 +27,10 @@ namespace autoware::trajectory_interpolator::plugin
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
-class TrajectoryPointFixer : TrajectoryOptimizerPluginBase
+class TrajectorySplineSmoother : TrajectoryOptimizerPluginBase
 {
 public:
-  TrajectoryPointFixer(
+  TrajectorySplineSmoother(
     std::string & name, const rclcpp::Node::SharedPtr node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
     const TrajectoryInterpolatorParams & params)
@@ -45,4 +45,4 @@ public:
 };
 }  // namespace autoware::trajectory_interpolator::plugin
 
-#endif  // AUTOWARE__TRAJECTORY_POINT_FIXER_HPP_
+#endif  // AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_

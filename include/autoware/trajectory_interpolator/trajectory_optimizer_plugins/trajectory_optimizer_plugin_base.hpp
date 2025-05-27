@@ -30,8 +30,11 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
 class TrajectoryOptimizerPluginBase
 {
 public:
-  TrajectoryOptimizerPluginBase(std::string & name, const rclcpp::Node::SharedPtr node_ptr)
-  : name_(std::move(name)), node_ptr_(node_ptr)
+  TrajectoryOptimizerPluginBase(
+    std::string & name, const rclcpp::Node::SharedPtr node_ptr,
+    const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
+    [[maybe_unused]] const TrajectoryInterpolatorParams & params)
+  : name_(std::move(name)), node_ptr_(node_ptr), time_keeper_(time_keeper)
   {
   }
   virtual void optimize_trajectory(
@@ -40,6 +43,8 @@ public:
   virtual rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters) = 0;
   std::string get_name() const { return name_; }
+  rclcpp::Node::SharedPtr get_node_ptr() const { return node_ptr_; }
+  std::shared_ptr<autoware_utils_debug::TimeKeeper> get_time_keeper() const { return time_keeper_; }
 
 private:
   std::string name_;
