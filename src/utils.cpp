@@ -50,6 +50,9 @@ void smooth_trajectory_with_elastic_band(
     RCLCPP_ERROR(get_logger(), "Elastic band path smoother is not initialized");
     return;
   }
+  if (traj_points.empty()) {
+    return;
+  }
   traj_points = eb_path_smoother_ptr->smoothTrajectory(traj_points, current_odometry.pose.pose);
   eb_path_smoother_ptr->resetPreviousData();
 }
@@ -129,6 +132,10 @@ void filter_velocity(
     RCLCPP_ERROR(get_logger(), "JerkFilteredSmoother is not initialized");
     return;
   }
+
+  if (input_trajectory.size() < 2) {
+    return;
+  }
   // Lateral acceleration limit
   const auto & nearest_dist_threshold = params.nearest_dist_threshold_m;
   const auto & nearest_yaw_threshold = params.nearest_yaw_threshold_rad;
@@ -149,10 +156,6 @@ void filter_velocity(
   input_trajectory = smoother->resampleTrajectory(
     input_trajectory, initial_motion_speed, current_odometry.pose.pose, nearest_dist_threshold,
     nearest_yaw_threshold);
-
-  if (input_trajectory.size() < 2) {
-    return;
-  }
 
   const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
     input_trajectory, current_odometry.pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
@@ -188,6 +191,10 @@ bool validate_point(const TrajectoryPoint & point)
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
 {
+  if (traj_points.size() < 5) {
+    RCLCPP_ERROR(get_logger(), "Not enough points in trajectory for akima spline interpolation");
+    return;
+  }
   auto trajectory_interpolation_util =
     InterpolationTrajectory::Builder{}
       .set_xy_interpolator<AkimaSpline>()  // Set interpolator for x-y plane
