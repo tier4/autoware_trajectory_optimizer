@@ -44,33 +44,8 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   debug_processing_time_detail_ =
     create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
   time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_);
-  smoother_time_keeper_ptr_ = std::make_shared<SmootherTimekeeper>();
-  const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
-  double wheelbase = vehicle_info.wheel_base_m;  // vehicle_info.wheel_base_m;
-  jerk_filtered_smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
-  jerk_filtered_smoother_->setWheelBase(wheelbase);
-  // // Set maximum acceleration before applying smoother. Depends on acceleration request from
-  // // external velocity limit
-  {
-    const double jerk_filtered_smoother_max_acceleration =
-      get_parameter("normal.max_acc").as_double();
-    const double jerk_filtered_smoother_max_jerk = get_parameter("normal.max_jerk").as_double();
-    jerk_filtered_smoother_->setMaxAccel(jerk_filtered_smoother_max_acceleration);
-    jerk_filtered_smoother_->setMaxJerk(jerk_filtered_smoother_max_jerk);
-  }
+
   set_up_params();
-  {  // parameters
-    // parameters for ego nearest search
-    ego_nearest_param_ = EgoNearestParam(this);
-
-    // parameters for trajectory
-    common_param_ = CommonParam(this);
-  }
-
-  eb_path_smoother_ptr_ = std::make_shared<EBPathSmoother>(
-    this, false, ego_nearest_param_, common_param_, smoother_time_keeper_ptr_);
-  replan_checker_ptr_ = std::make_shared<ReplanChecker>(this, ego_nearest_param_);
-  eb_path_smoother_ptr_->initialize(false, common_param_);
 
   // Parameter Callback
   set_param_res_ = add_on_set_parameters_callback(
@@ -88,6 +63,25 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_pub_);
   // last time a trajectory was received
   last_time_ = std::make_shared<rclcpp::Time>(now());
+}
+
+void TrajectoryInterpolator::initialize_optimizers()
+{
+  if (initialized_optimizers_) {
+    return;
+  }
+  // initialize optimizer pointers
+  eb_smoother_optimizer_ptr_ = std::make_shared<plugin::TrajectoryEBSmootherOptimizer>(
+    "eb_smoother_optimizer", this, time_keeper_, params_);
+  trajectory_extender_ptr_ = std::make_shared<plugin::TrajectoryExtender>(
+    "trajectory_extender", this, time_keeper_, params_);
+  trajectory_point_fixer_ptr_ = std::make_shared<plugin::TrajectoryPointFixer>(
+    "trajectory_point_fixer", this, time_keeper_, params_);
+  trajectory_spline_smoother_ptr_ = std::make_shared<plugin::TrajectorySplineSmoother>(
+    "trajectory_spline_smoother", this, time_keeper_, params_);
+  trajectory_velocity_optimizer_ptr_ = std::make_shared<plugin::TrajectoryVelocityOptimizer>(
+    "trajectory_velocity_optimizer", this, time_keeper_, params_);
+  initialized_optimizers_ = true;
 }
 
 rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
@@ -110,7 +104,8 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
     parameters, "use_akima_spline_interpolation", params.use_akima_spline_interpolation);
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   update_param<bool>(parameters, "smooth_trajectories", params.smooth_trajectories);
-  update_param<bool>(parameters, "limit_velocity", params.limit_velocity);
+  update_param<bool>(parameters, "limit_speed", params.limit_speed);
+  update_param<bool>(parameters, "set_engage_speed", params.set_engage_speed);
   update_param<bool>(parameters, "fix_invalid_points", params.fix_invalid_points);
   update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
   update_param<bool>(parameters, "keep_last_trajectory", params.keep_last_trajectory);
@@ -118,17 +113,24 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
 
   params_ = params;
 
-  {  // parameters for ego nearest search
-    ego_nearest_param_.onParam(parameters);
+  // call update_param for all optimizer plugins
 
-    // parameters for trajectory
-    common_param_.onParam(parameters);
-
-    // parameters for core algorithms
-    eb_path_smoother_ptr_->onParam(parameters);
-    replan_checker_ptr_->onParam(parameters);
-    initialize_planners();
+  if (eb_smoother_optimizer_ptr_) {
+    eb_smoother_optimizer_ptr_->on_parameter(parameters);
   }
+  if (trajectory_extender_ptr_) {
+    trajectory_extender_ptr_->on_parameter(parameters);
+  }
+  if (trajectory_point_fixer_ptr_) {
+    trajectory_point_fixer_ptr_->on_parameter(parameters);
+  }
+  if (trajectory_spline_smoother_ptr_) {
+    trajectory_spline_smoother_ptr_->on_parameter(parameters);
+  }
+  if (trajectory_velocity_optimizer_ptr_) {
+    trajectory_velocity_optimizer_ptr_->on_parameter(parameters);
+  }
+
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason = "success";
@@ -137,17 +139,10 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
 
 void TrajectoryInterpolator::initialize_planners()
 {
-  RCLCPP_DEBUG(get_logger(), "Initialize planning");
-
-  eb_path_smoother_ptr_->initialize(false, common_param_);
-  reset_previous_data();
 }
 
 void TrajectoryInterpolator::reset_previous_data()
 {
-  eb_path_smoother_ptr_->resetPreviousData();
-
-  prev_optimized_traj_points_ptr_ = nullptr;
 }
 
 void TrajectoryInterpolator::set_up_params()
@@ -173,7 +168,9 @@ void TrajectoryInterpolator::set_up_params()
     get_or_declare_parameter<bool>(*this, "use_akima_spline_interpolation");
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
   params_.smooth_trajectories = get_or_declare_parameter<bool>(*this, "smooth_trajectories");
-  params_.limit_velocity = get_or_declare_parameter<bool>(*this, "limit_velocity");
+  params_.limit_speed = get_or_declare_parameter<bool>(*this, "limit_speed");
+  params_.set_engage_speed = get_or_declare_parameter<bool>(*this, "set_engage_speed");
+
   params_.fix_invalid_points = get_or_declare_parameter<bool>(*this, "fix_invalid_points");
 
   params_.publish_last_trajectory =
@@ -186,6 +183,8 @@ void TrajectoryInterpolator::set_up_params()
 void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
+  initialize_optimizers();
+
   auto create_output_trajectory_from_past = [&]() {
     NewTrajectory previous_trajectory;
     previous_trajectory.points = previous_trajectory_ptr_->points;
@@ -200,6 +199,8 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
   current_odometry_ptr_ = sub_current_odometry_.take_data();
   current_acceleration_ptr_ = sub_current_acceleration_.take_data();
+  params_.current_odometry = *current_odometry_ptr_;
+  params_.current_acceleration = *current_acceleration_ptr_;
 
   const auto keep_last_trajectory_s = params_.keep_last_trajectory_s;
   const auto keep_last_trajectory = params_.keep_last_trajectory;
@@ -229,13 +230,13 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 
   Trajectories output_trajectories = *msg;
   for (auto & trajectory : output_trajectories.trajectories) {
-    if (params_.extend_trajectory_backward) {
-      utils::expand_trajectory_with_ego_history(
-        trajectory.points, past_ego_state_trajectory_.points, *current_odometry_ptr_, params_);
-    }
-    utils::interpolate_trajectory(
-      trajectory.points, *current_odometry_ptr_, *current_acceleration_ptr_, params_,
-      jerk_filtered_smoother_, eb_path_smoother_ptr_);
+    // apply optimizers
+    trajectory_extender_ptr_->optimize_trajectory(trajectory.points, params_);
+    trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
+    trajectory_velocity_optimizer_ptr_->optimize_trajectory(trajectory.points, params_);
+    eb_smoother_optimizer_ptr_->optimize_trajectory(trajectory.points, params_);
+    trajectory_spline_smoother_ptr_->optimize_trajectory(trajectory.points, params_);
+    trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {

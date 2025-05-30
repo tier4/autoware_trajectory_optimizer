@@ -14,9 +14,14 @@
 
 #ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
 #define AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
+#include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/detail/odometry__struct.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 namespace autoware::trajectory_interpolator
 {
+using geometry_msgs::msg::AccelWithCovarianceStamped;
+using nav_msgs::msg::Odometry;
 
 struct InitialMotion
 {
@@ -36,11 +41,14 @@ struct TrajectoryInterpolatorParams
   bool use_akima_spline_interpolation{false};
   bool smooth_velocities{false};
   bool smooth_trajectories{false};
-  bool limit_velocity{false};
+  bool limit_speed{false};
+  bool set_engage_speed{false};
   bool fix_invalid_points{false};
   bool publish_last_trajectory{false};
   bool keep_last_trajectory{false};
   bool extend_trajectory_backward{false};
+  Odometry current_odometry;
+  AccelWithCovarianceStamped current_acceleration;
 };
 }  // namespace autoware::trajectory_interpolator
 #endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_

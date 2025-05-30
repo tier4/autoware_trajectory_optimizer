@@ -8,6 +8,12 @@ autoware_package()
 ament_auto_add_library(autoware_trajectory_interpolator_component SHARED
   src/trajectory_interpolator.cpp
   src/utils.cpp
+  src/trajectory_optimizer_plugins/trajectory_eb_smoother_optimizer.cpp
+  src/trajectory_optimizer_plugins/trajectory_extender.cpp
+  src/trajectory_optimizer_plugins/trajectory_point_fixer.cpp
+  src/trajectory_optimizer_plugins/trajectory_spline_smoother.cpp
+  src/trajectory_optimizer_plugins/trajectory_velocity_optimizer.cpp
+
 )
 target_link_libraries(autoware_trajectory_interpolator_component)
 rclcpp_components_register_node(autoware_trajectory_interpolator_component
