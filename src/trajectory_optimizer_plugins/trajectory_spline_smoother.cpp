@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_spline_smoother.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_spline_smoother.hpp"
 
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 void TrajectorySplineSmoother::optimize_trajectory(
-  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryInterpolatorParams & params)
+  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryOptimizerParams & params)
 {
   // Apply spline to smooth the trajectory
   if (params.use_akima_spline_interpolation) {
@@ -40,4 +40,4 @@ rcl_interfaces::msg::SetParametersResult TrajectorySplineSmoother::on_parameter(
   return result;
 }
 
-}  // namespace autoware::trajectory_interpolator::plugin
+}  // namespace autoware::trajectory_optimizer::plugin

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_eb_smoother_optimizer.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_eb_smoother_optimizer.hpp"
 
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 
 TrajectoryEBSmootherOptimizer::TrajectoryEBSmootherOptimizer(
   const std::string name, rclcpp::Node * node_ptr,
   const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
-  const TrajectoryInterpolatorParams & params)
+  const TrajectoryOptimizerParams & params)
 : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
 {
   // parameters for ego nearest search
@@ -39,7 +39,7 @@ TrajectoryEBSmootherOptimizer::TrajectoryEBSmootherOptimizer(
 }
 
 void TrajectoryEBSmootherOptimizer::optimize_trajectory(
-  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryInterpolatorParams & params)
+  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryOptimizerParams & params)
 {
   // Use elastic band to smooth the trajectory
   if (params.smooth_trajectories) {
@@ -73,4 +73,4 @@ rcl_interfaces::msg::SetParametersResult TrajectoryEBSmootherOptimizer::on_param
   return result;
 }
 
-}  // namespace autoware::trajectory_interpolator::plugin
+}  // namespace autoware::trajectory_optimizer::plugin

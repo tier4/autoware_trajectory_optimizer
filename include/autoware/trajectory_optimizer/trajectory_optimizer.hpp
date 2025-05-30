@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
-#define AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
+#ifndef AUTOWARE__TRAJECTORY_OPTIMIZER_HPP_
+#define AUTOWARE__TRAJECTORY_OPTIMIZER_HPP_
 
 #include "autoware/path_smoother/elastic_band.hpp"
 #include "autoware/path_smoother/replan_checker.hpp"
-#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_eb_smoother_optimizer.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_extender.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_point_fixer.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_spline_smoother.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_velocity_optimizer.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_eb_smoother_optimizer.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_extender.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_point_fixer.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_spline_smoother.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_velocity_optimizer.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <autoware_utils/ros/polling_subscriber.hpp>
@@ -44,7 +44,7 @@
 #include <string>
 #include <vector>
 
-namespace autoware::trajectory_interpolator
+namespace autoware::trajectory_optimizer
 {
 
 using autoware::path_smoother::CommonParam;
@@ -123,10 +123,10 @@ private:
   EgoNearestParam ego_nearest_param_;
 
   Trajectory past_ego_state_trajectory_;
-  TrajectoryInterpolatorParams params_;
+  TrajectoryOptimizerParams params_;
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 };
 
-}  // namespace autoware::trajectory_interpolator
+}  // namespace autoware::trajectory_optimizer
 
-#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_HPP_
+#endif  // AUTOWARE__TRAJECTORY_OPTIMIZER_HPP_

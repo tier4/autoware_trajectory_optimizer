@@ -14,7 +14,7 @@
 
 #ifndef AUTOWARE__TRAJECTORY_OPTIMIZER_PLUGIN_HPP_
 #define AUTOWARE__TRAJECTORY_OPTIMIZER_PLUGIN_HPP_
-#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
 
 #include <autoware_utils/system/time_keeper.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -22,7 +22,7 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
@@ -33,13 +33,13 @@ public:
   TrajectoryOptimizerPluginBase(
     const std::string name, rclcpp::Node * node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
-    [[maybe_unused]] const TrajectoryInterpolatorParams & params)
+    [[maybe_unused]] const TrajectoryOptimizerParams & params)
   : name_(name), node_ptr_(node_ptr), time_keeper_(time_keeper)
   {
     std::cerr << "instantiated TrajectoryOptimizerPluginBase: " << name_ << std::endl;
   }
   virtual void optimize_trajectory(
-    TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) = 0;
+    TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params) = 0;
   virtual void set_up_params() = 0;
   virtual rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters) = 0;
@@ -52,6 +52,6 @@ private:
   rclcpp::Node * node_ptr_;
   mutable std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_{nullptr};
 };
-}  // namespace autoware::trajectory_interpolator::plugin
+}  // namespace autoware::trajectory_optimizer::plugin
 
 #endif  // AUTOWARE__TRAJECTORY_OPTIMIZER_PLUGIN_HPP_

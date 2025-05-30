@@ -1,8 +1,8 @@
-# Autoware Trajectory Interpolator
+# Autoware Trajectory Optimizer
 
-The `autoware_trajectory_interpolator` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow. The interpolation methods for the path include the elastic band smoother and the Akima spline. Additionally, velocity smoothing can be achieved using assets from the `autoware_velocity_smoother` package.
+The `autoware_trajectory_optimizer` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow. The interpolation methods for the path include the elastic band smoother and the Akima spline. Additionally, velocity smoothing can be achieved using assets from the `autoware_velocity_smoother` package.
 
-The `autoware_trajectory_interpolator` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow.
+The `autoware_trajectory_optimizer` package is responsible for generating smooth and feasible trajectories for autonomous vehicles. It takes in a series of waypoints and outputs a continuous trajectory that the vehicle can follow.
 
 ## Features
 
@@ -19,7 +19,7 @@ This package depends on the following packages:
 
 ## Configuration
 
-The behavior of the `autoware_trajectory_interpolator` can be configured using the parameters defined in the `config` directory. Some of the key parameters include:
+The behavior of the `autoware_trajectory_optimizer` can be configured using the parameters defined in the `config` directory. Some of the key parameters include:
 
 - `keep_last_trajectory_s`: How long to maintain the previous chosen/best trajectory as a single output for this module. Only used if `keep_last_trajectory` is true.
 - `nearest_dist_threshold_m`: constraint used to search for the nearest trajectory pose to the ego vehicle.

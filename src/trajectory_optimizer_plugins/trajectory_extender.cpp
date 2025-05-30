@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_extender.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_extender.hpp"
 
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 void TrajectoryExtender::optimize_trajectory(
-  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryInterpolatorParams & params)
+  TrajectoryPoints & traj_points, [[maybe_unused]] const TrajectoryOptimizerParams & params)
 {
   if (params.extend_trajectory_backward) {
     // Note: This function adds the current ego state to a history trajectory. Note that it is ok to
@@ -45,4 +45,4 @@ rcl_interfaces::msg::SetParametersResult TrajectoryExtender::on_parameter(
   return result;
 }
 
-}  // namespace autoware::trajectory_interpolator::plugin
+}  // namespace autoware::trajectory_optimizer::plugin

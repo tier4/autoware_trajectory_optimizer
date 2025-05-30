@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_interpolator.hpp"
-
 #include "autoware/motion_utils/resample/resample.hpp"
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 #include "autoware_utils/ros/parameter.hpp"
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
@@ -33,11 +32,11 @@
 #include <numeric>
 #include <vector>
 
-namespace autoware::trajectory_interpolator
+namespace autoware::trajectory_optimizer
 {
 
 TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & options)
-: Node("trajectory_interpolator", options)
+: Node("trajectory_optimizer", options)
 {
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
@@ -246,7 +245,7 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
   trajectories_pub_->publish(output_trajectories);
 }
 
-}  // namespace autoware::trajectory_interpolator
+}  // namespace autoware::trajectory_optimizer
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::trajectory_interpolator::TrajectoryInterpolator)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::trajectory_optimizer::TrajectoryInterpolator)
