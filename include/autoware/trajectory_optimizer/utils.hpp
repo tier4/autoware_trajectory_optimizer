@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
-#define AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
+#ifndef AUTOWARE__TRAJECTORY_OPTIMIZER_UTILS_HPP_
+#define AUTOWARE__TRAJECTORY_OPTIMIZER_UTILS_HPP_
 
 #include "autoware/path_smoother/elastic_band.hpp"
 #include "autoware/path_smoother/replan_checker.hpp"
-#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <rclcpp/logger.hpp>
@@ -34,7 +34,7 @@
 
 #include <memory>
 
-namespace autoware::trajectory_interpolator::utils
+namespace autoware::trajectory_optimizer::utils
 {
 
 using autoware::path_smoother::CommonParam;
@@ -70,7 +70,7 @@ bool validate_point(const TrajectoryPoint & point);
  * @param traj_points The trajectory points to be interpolated.
  * @param params The parameters for trajectory interpolation.
  */
-void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params);
+void apply_spline(TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params);
 
 /**
  * @brief Interpolates the given trajectory points based on the current odometry and acceleration.
@@ -83,13 +83,12 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
  */
 void interpolate_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const AccelWithCovarianceStamped & current_acceleration,
-  const TrajectoryInterpolatorParams & params,
+  const AccelWithCovarianceStamped & current_acceleration, const TrajectoryOptimizerParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & jerk_filtered_smoother,
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr);
 
 /**
- * @brief Gets the logger for the trajectory interpolator.
+ * @brief Gets the logger for the trajectory optimizer.
  *
  * @return The logger instance.
  */
@@ -113,8 +112,8 @@ void remove_invalid_points(std::vector<TrajectoryPoint> & input_trajectory);
  */
 void filter_velocity(
   TrajectoryPoints & input_trajectory, const InitialMotion & initial_motion,
-  const TrajectoryInterpolatorParams & params,
-  const std::shared_ptr<JerkFilteredSmoother> & smoother, const Odometry & current_odometry);
+  const TrajectoryOptimizerParams & params, const std::shared_ptr<JerkFilteredSmoother> & smoother,
+  const Odometry & current_odometry);
 
 /**
  * @brief Clamps the velocities of the input trajectory points to the specified minimum values.
@@ -154,7 +153,7 @@ void remove_close_proximity_points(
  */
 void add_ego_state_to_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const TrajectoryInterpolatorParams & params);
+  const TrajectoryOptimizerParams & params);
 
 /**
  * @brief Expands the trajectory points with the ego history points.
@@ -164,8 +163,8 @@ void add_ego_state_to_trajectory(
  */
 void expand_trajectory_with_ego_history(
   TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points,
-  const Odometry & current_odometry, const TrajectoryInterpolatorParams & params);
+  const Odometry & current_odometry, const TrajectoryOptimizerParams & params);
 
-};  // namespace autoware::trajectory_interpolator::utils
+};  // namespace autoware::trajectory_optimizer::utils
 
-#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_UTILS_HPP_
+#endif  // AUTOWARE__TRAJECTORY_OPTIMIZER_UTILS_HPP_

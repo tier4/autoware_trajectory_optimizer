@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -22,8 +22,8 @@
 
 #include <limits>
 
-using namespace autoware::trajectory_interpolator::utils;
-using namespace autoware::trajectory_interpolator;
+using namespace autoware::trajectory_optimizer::utils;
+using namespace autoware::trajectory_optimizer;
 using namespace autoware_planning_msgs::msg;
 using namespace nav_msgs::msg;
 using namespace geometry_msgs::msg;
@@ -107,7 +107,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ValidatePoint)
 TEST_F(TrajectoryInterpolatorUtilsTest, ApplySpline)
 {
   TrajectoryPoints points = create_sample_trajectory();
-  TrajectoryInterpolatorParams params;
+  TrajectoryOptimizerParams params;
   params.spline_interpolation_resolution_m = 0.1;
   utils::apply_spline(points, params);
   ASSERT_GE(points.size(), 2);
@@ -119,7 +119,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, AddEgoStateToTrajectory)
   Odometry current_odometry;
   current_odometry.pose.pose.position.x = 1.0;
   current_odometry.pose.pose.position.y = 1.0;
-  TrajectoryInterpolatorParams params;
+  TrajectoryOptimizerParams params;
   utils::add_ego_state_to_trajectory(points, current_odometry, params);
   ASSERT_FALSE(points.empty());
 }
@@ -129,7 +129,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ExpandTrajectoryWithEgoHistory)
   TrajectoryPoints points = create_sample_trajectory();
   TrajectoryPoints ego_history_points = create_sample_trajectory(1.0, -10.0);
   Odometry current_odometry;
-  TrajectoryInterpolatorParams params;
+  TrajectoryOptimizerParams params;
   params.backward_trajectory_extension_m = 15.0;
   current_odometry.pose.pose.position.x = points.front().pose.position.x;
   current_odometry.pose.pose.position.y = points.front().pose.position.y;

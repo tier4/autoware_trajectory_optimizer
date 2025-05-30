@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_
-#define AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
+#ifndef AUTOWARE__TRAJECTORY_VELOCITY_OPTIMIZER_HPP_
+#define AUTOWARE__TRAJECTORY_VELOCITY_OPTIMIZER_HPP_
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
+#include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <autoware_utils/system/time_keeper.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -22,27 +23,31 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using autoware::velocity_smoother::JerkFilteredSmoother;
 
-class TrajectorySplineSmoother : TrajectoryOptimizerPluginBase
+class TrajectoryVelocityOptimizer : public TrajectoryOptimizerPluginBase
 {
 public:
-  TrajectorySplineSmoother(
+  TrajectoryVelocityOptimizer(
     const std::string name, rclcpp::Node * node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
-    const TrajectoryInterpolatorParams & params)
-  : TrajectoryOptimizerPluginBase(name, node_ptr, time_keeper, params)
-  {
-  }
+    const TrajectoryOptimizerParams & params);
+
+  void set_up_velocity_smoother(
+    rclcpp::Node * node_ptr, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
   void optimize_trajectory(
-    TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) override;
+    TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params) override;
   void set_up_params() override;
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters) override;
-};
-}  // namespace autoware::trajectory_interpolator::plugin
 
-#endif  // AUTOWARE__TRAJECTORY_SPLINE_SMOOTHER_HPP_
+private:
+  std::shared_ptr<JerkFilteredSmoother> jerk_filtered_smoother_{nullptr};
+};
+}  // namespace autoware::trajectory_optimizer::plugin
+
+#endif  // AUTOWARE__TRAJECTORY_VELOCITY_OPTIMIZER_HPP_

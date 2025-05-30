@@ -16,7 +16,7 @@
 #define AUTOWARE__TRAJECTORY_EB_SMOOTHER_OPTIMIZER_HPP_
 #include "autoware/path_smoother/elastic_band.hpp"
 #include "autoware/path_smoother/replan_checker.hpp"
-#include "autoware/trajectory_interpolator/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_optimizer_plugin_base.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -25,7 +25,7 @@
 
 #include <memory>
 
-namespace autoware::trajectory_interpolator::plugin
+namespace autoware::trajectory_optimizer::plugin
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
@@ -41,10 +41,10 @@ public:
   TrajectoryEBSmootherOptimizer(
     const std::string name, rclcpp::Node * node_ptr,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
-    const TrajectoryInterpolatorParams & params);
+    const TrajectoryOptimizerParams & params);
 
   void optimize_trajectory(
-    TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params) override;
+    TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params) override;
   void set_up_params() override;
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters) override;
@@ -55,6 +55,6 @@ private:
   std::shared_ptr<EBPathSmoother> eb_path_smoother_ptr_{nullptr};
   mutable std::shared_ptr<SmootherTimekeeper> smoother_time_keeper_ptr_{nullptr};
 };
-}  // namespace autoware::trajectory_interpolator::plugin
+}  // namespace autoware::trajectory_optimizer::plugin
 
 #endif  // AUTOWARE__TRAJECTORY_EB_SMOOTHER_OPTIMIZER_HPP_

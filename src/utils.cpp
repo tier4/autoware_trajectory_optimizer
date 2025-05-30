@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory_interpolator/utils.hpp"
+#include "autoware/trajectory_optimizer/utils.hpp"
 
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
-#include "autoware/trajectory_interpolator/trajectory_interpolator_structs.hpp"
+#include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
@@ -31,7 +31,7 @@
 #include <cmath>
 #include <iostream>
 
-namespace autoware::trajectory_interpolator::utils
+namespace autoware::trajectory_optimizer::utils
 {
 using autoware::experimental::trajectory::interpolator::AkimaSpline;
 using InterpolationTrajectory =
@@ -39,7 +39,7 @@ using InterpolationTrajectory =
 
 rclcpp::Logger get_logger()
 {
-  return rclcpp::get_logger("trajectory_interpolator");
+  return rclcpp::get_logger("trajectory_optimizer");
 }
 
 void smooth_trajectory_with_elastic_band(
@@ -125,8 +125,8 @@ void set_max_velocity(TrajectoryPoints & input_trajectory_array, const float max
 
 void filter_velocity(
   TrajectoryPoints & input_trajectory, const InitialMotion & initial_motion,
-  const TrajectoryInterpolatorParams & params,
-  const std::shared_ptr<JerkFilteredSmoother> & smoother, const Odometry & current_odometry)
+  const TrajectoryOptimizerParams & params, const std::shared_ptr<JerkFilteredSmoother> & smoother,
+  const Odometry & current_odometry)
 {
   if (!smoother) {
     RCLCPP_ERROR(get_logger(), "JerkFilteredSmoother is not initialized");
@@ -189,7 +189,7 @@ bool validate_point(const TrajectoryPoint & point)
          !std::isnan(point.longitudinal_velocity_mps) && !std::isnan(point.acceleration_mps2);
 }
 
-void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorParams & params)
+void apply_spline(TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params)
 {
   if (traj_points.size() < 5) {
     RCLCPP_ERROR(get_logger(), "Not enough points in trajectory for akima spline interpolation");
@@ -240,8 +240,7 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryInterpolatorPa
 
 void interpolate_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const AccelWithCovarianceStamped & current_acceleration,
-  const TrajectoryInterpolatorParams & params,
+  const AccelWithCovarianceStamped & current_acceleration, const TrajectoryOptimizerParams & params,
   const std::shared_ptr<JerkFilteredSmoother> & jerk_filtered_smoother,
   const std::shared_ptr<EBPathSmoother> & eb_path_smoother_ptr)
 {
@@ -306,7 +305,7 @@ void interpolate_trajectory(
 
 void add_ego_state_to_trajectory(
   TrajectoryPoints & traj_points, const Odometry & current_odometry,
-  const TrajectoryInterpolatorParams & params)
+  const TrajectoryOptimizerParams & params)
 {
   TrajectoryPoint ego_state;
   ego_state.pose = current_odometry.pose.pose;
@@ -349,7 +348,7 @@ void add_ego_state_to_trajectory(
 
 void expand_trajectory_with_ego_history(
   TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points,
-  const Odometry & current_odometry, const TrajectoryInterpolatorParams & params)
+  const Odometry & current_odometry, const TrajectoryOptimizerParams & params)
 {
   if (ego_history_points.empty() || traj_points.empty()) {
     return;
@@ -379,4 +378,4 @@ void expand_trajectory_with_ego_history(
     traj_points.insert(traj_points.begin(), point);
   });
 }
-}  // namespace autoware::trajectory_interpolator::utils
+}  // namespace autoware::trajectory_optimizer::utils

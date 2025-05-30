@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
-#define AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
+#ifndef AUTOWARE__TRAJECTORY_OPTIMIZER_STRUCTS_HPP_
+#define AUTOWARE__TRAJECTORY_OPTIMIZER_STRUCTS_HPP_
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/detail/odometry__struct.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-namespace autoware::trajectory_interpolator
+namespace autoware::trajectory_optimizer
 {
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
@@ -28,7 +28,7 @@ struct InitialMotion
   double speed_mps{0.0};
   double acc_mps2{0.0};
 };
-struct TrajectoryInterpolatorParams
+struct TrajectoryOptimizerParams
 {
   double keep_last_trajectory_s{0.0};
   double nearest_dist_threshold_m{0.0};
@@ -50,5 +50,5 @@ struct TrajectoryInterpolatorParams
   Odometry current_odometry;
   AccelWithCovarianceStamped current_acceleration;
 };
-}  // namespace autoware::trajectory_interpolator
-#endif  // AUTOWARE__TRAJECTORY_INTERPOLATOR_STRUCTS_HPP_
+}  // namespace autoware::trajectory_optimizer
+#endif  // AUTOWARE__TRAJECTORY_OPTIMIZER_STRUCTS_HPP_
