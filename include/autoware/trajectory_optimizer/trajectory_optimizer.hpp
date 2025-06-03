@@ -64,10 +64,10 @@ using nav_msgs::msg::Odometry;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
 using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 
-class TrajectoryInterpolator : public rclcpp::Node
+class TrajectoryOptimizer : public rclcpp::Node
 {
 public:
-  explicit TrajectoryInterpolator(const rclcpp::NodeOptions & options);
+  explicit TrajectoryOptimizer(const rclcpp::NodeOptions & options);
 
 private:
   void on_traj(const Trajectories::ConstSharedPtr msg);
@@ -119,9 +119,6 @@ private:
   // variables for previous information
   std::shared_ptr<TrajectoryPoints> prev_optimized_traj_points_ptr_{nullptr};
   // parameters
-  CommonParam common_param_;
-  EgoNearestParam ego_nearest_param_;
-
   Trajectory past_ego_state_trajectory_;
   TrajectoryOptimizerParams params_;
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
