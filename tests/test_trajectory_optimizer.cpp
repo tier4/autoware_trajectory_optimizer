@@ -28,7 +28,7 @@ using namespace autoware_planning_msgs::msg;
 using namespace nav_msgs::msg;
 using namespace geometry_msgs::msg;
 
-class TrajectoryInterpolatorUtilsTest : public ::testing::Test
+class TrajectoryOptimizerUtilsTest : public ::testing::Test
 {
 protected:
   TrajectoryPoints create_sample_trajectory(double resolution = 1.0, double offset = 0.0)
@@ -46,7 +46,7 @@ protected:
   }
 };
 
-TEST_F(TrajectoryInterpolatorUtilsTest, RemoveInvalidPoints)
+TEST_F(TrajectoryOptimizerUtilsTest, RemoveInvalidPoints)
 {
   TrajectoryPoints points = create_sample_trajectory();
   const auto points_size = points.size();
@@ -54,7 +54,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, RemoveInvalidPoints)
   ASSERT_EQ(points.size(), points_size);
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, RemoveCloseProximityPoints)
+TEST_F(TrajectoryOptimizerUtilsTest, RemoveCloseProximityPoints)
 {
   TrajectoryPoints points = create_sample_trajectory();
   const auto points_size = points.size();
@@ -66,7 +66,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, RemoveCloseProximityPoints)
   ASSERT_EQ(points.size(), 1);
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, ClampVelocities)
+TEST_F(TrajectoryOptimizerUtilsTest, ClampVelocities)
 {
   TrajectoryPoints points = create_sample_trajectory();
   utils::clamp_velocities(points, 2.0f, 0.5f);
@@ -76,7 +76,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ClampVelocities)
   }
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, SetMaxVelocity)
+TEST_F(TrajectoryOptimizerUtilsTest, SetMaxVelocity)
 {
   TrajectoryPoints points = create_sample_trajectory();
   utils::set_max_velocity(points, 2.0f);
@@ -85,7 +85,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, SetMaxVelocity)
   }
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, ValidatePoint)
+TEST_F(TrajectoryOptimizerUtilsTest, ValidatePoint)
 {
   TrajectoryPoint valid_point;
   valid_point.longitudinal_velocity_mps = 1.0;
@@ -104,7 +104,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ValidatePoint)
   ASSERT_FALSE(utils::validate_point(invalid_point));
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, ApplySpline)
+TEST_F(TrajectoryOptimizerUtilsTest, ApplySpline)
 {
   TrajectoryPoints points = create_sample_trajectory();
   TrajectoryOptimizerParams params;
@@ -113,7 +113,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, ApplySpline)
   ASSERT_GE(points.size(), 2);
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, AddEgoStateToTrajectory)
+TEST_F(TrajectoryOptimizerUtilsTest, AddEgoStateToTrajectory)
 {
   TrajectoryPoints points = create_sample_trajectory();
   Odometry current_odometry;
@@ -124,7 +124,7 @@ TEST_F(TrajectoryInterpolatorUtilsTest, AddEgoStateToTrajectory)
   ASSERT_FALSE(points.empty());
 }
 
-TEST_F(TrajectoryInterpolatorUtilsTest, ExpandTrajectoryWithEgoHistory)
+TEST_F(TrajectoryOptimizerUtilsTest, ExpandTrajectoryWithEgoHistory)
 {
   TrajectoryPoints points = create_sample_trajectory();
   TrajectoryPoints ego_history_points = create_sample_trajectory(1.0, -10.0);

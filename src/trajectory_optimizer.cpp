@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/resample/resample.hpp"
 #include "autoware/trajectory_optimizer/trajectory_optimizer.hpp"
+
+#include "autoware/motion_utils/resample/resample.hpp"
 #include "autoware/trajectory_optimizer/utils.hpp"
 #include "autoware_utils/ros/parameter.hpp"
 
@@ -35,7 +36,7 @@
 namespace autoware::trajectory_optimizer
 {
 
-TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & options)
+TrajectoryOptimizer::TrajectoryOptimizer(const rclcpp::NodeOptions & options)
 : Node("trajectory_optimizer", options)
 {
   // create time_keeper and its publisher
@@ -48,12 +49,12 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
 
   // Parameter Callback
   set_param_res_ = add_on_set_parameters_callback(
-    std::bind(&TrajectoryInterpolator::on_parameter, this, std::placeholders::_1));
+    std::bind(&TrajectoryOptimizer::on_parameter, this, std::placeholders::_1));
 
   // interface subscriber
   trajectories_sub_ = create_subscription<Trajectories>(
     "~/input/trajectories", 1,
-    std::bind(&TrajectoryInterpolator::on_traj, this, std::placeholders::_1));
+    std::bind(&TrajectoryOptimizer::on_traj, this, std::placeholders::_1));
   // interface publisher
   trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
   // debug time keeper
@@ -64,7 +65,7 @@ TrajectoryInterpolator::TrajectoryInterpolator(const rclcpp::NodeOptions & optio
   last_time_ = std::make_shared<rclcpp::Time>(now());
 }
 
-void TrajectoryInterpolator::initialize_optimizers()
+void TrajectoryOptimizer::initialize_optimizers()
 {
   if (initialized_optimizers_) {
     return;
@@ -83,7 +84,7 @@ void TrajectoryInterpolator::initialize_optimizers()
   initialized_optimizers_ = true;
 }
 
-rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
+rcl_interfaces::msg::SetParametersResult TrajectoryOptimizer::on_parameter(
   const std::vector<rclcpp::Parameter> & parameters)
 {
   using autoware_utils::update_param;
@@ -136,15 +137,15 @@ rcl_interfaces::msg::SetParametersResult TrajectoryInterpolator::on_parameter(
   return result;
 }
 
-void TrajectoryInterpolator::initialize_planners()
+void TrajectoryOptimizer::initialize_planners()
 {
 }
 
-void TrajectoryInterpolator::reset_previous_data()
+void TrajectoryOptimizer::reset_previous_data()
 {
 }
 
-void TrajectoryInterpolator::set_up_params()
+void TrajectoryOptimizer::set_up_params()
 {
   using autoware_utils::get_or_declare_parameter;
 
@@ -179,7 +180,7 @@ void TrajectoryInterpolator::set_up_params()
     get_or_declare_parameter<bool>(*this, "extend_trajectory_backward");
 }
 
-void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
+void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
   initialize_optimizers();
@@ -248,4 +249,4 @@ void TrajectoryInterpolator::on_traj([[maybe_unused]] const Trajectories::ConstS
 }  // namespace autoware::trajectory_optimizer
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::trajectory_optimizer::TrajectoryInterpolator)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::trajectory_optimizer::TrajectoryOptimizer)

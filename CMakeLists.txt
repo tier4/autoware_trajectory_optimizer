@@ -17,7 +17,7 @@ ament_auto_add_library(autoware_trajectory_optimizer_component SHARED
 )
 target_link_libraries(autoware_trajectory_optimizer_component)
 rclcpp_components_register_node(autoware_trajectory_optimizer_component
-  PLUGIN "autoware::trajectory_optimizer::TrajectoryInterpolator"
+  PLUGIN "autoware::trajectory_optimizer::TrajectoryOptimizer"
   EXECUTABLE autoware_trajectory_optimizer_node
 )
 
