@@ -348,34 +348,41 @@ void add_ego_state_to_trajectory(
 
 void expand_trajectory_with_ego_history(
   TrajectoryPoints & traj_points, const TrajectoryPoints & ego_history_points,
-  const Odometry & current_odometry, const TrajectoryOptimizerParams & params)
+  [[maybe_unused]] const Odometry & current_odometry,
+  [[maybe_unused]] const TrajectoryOptimizerParams & params)
 {
   if (ego_history_points.empty() || traj_points.empty()) {
     return;
   }
 
-  const auto & first_trajectory_point = traj_points.front();
-  const auto distance_to_first_point = std::abs(autoware::motion_utils::calcSignedArcLength(
-    traj_points, first_trajectory_point.pose.position, current_odometry.pose.pose.position));
+  if (traj_points.empty()) {
+    traj_points.insert(traj_points.begin(), ego_history_points.begin(), ego_history_points.end());
+    return;
+  }
 
-  const auto first_traj_point_position = traj_points.front().pose.position;
+  const auto first_ego_history_point = ego_history_points.front();
+  const auto first_ego_trajectory_point = traj_points.front();
+  const auto first_ego_trajectory_point_arc_length = autoware::motion_utils::calcSignedArcLength(
+    ego_history_points, first_ego_history_point.pose.position,
+    first_ego_trajectory_point.pose.position);
 
-  std::for_each(ego_history_points.rbegin(), ego_history_points.rend(), [&](auto point) {
-    const auto arc_length = autoware::motion_utils::calcSignedArcLength(
-      traj_points, first_traj_point_position, point.pose.position);
-    const auto distance = std::abs(arc_length);
+  std::for_each(ego_history_points.rbegin(), ego_history_points.rend(), [&](const auto & point) {
+    const auto point_arc_length = autoware::motion_utils::calcSignedArcLength(
+      ego_history_points, first_ego_history_point.pose.position, point.pose.position);
 
-    const bool is_outside_of_relevant_range =
-      distance < distance_to_first_point || distance > params.backward_trajectory_extension_m;
-    const bool is_ahead_of_first_point = arc_length > 0.0;
-
-    if (is_ahead_of_first_point || is_outside_of_relevant_range) {
-      return;  // Skip points that are ahead of the first trajectory point
-      // Skip points that are too close or too far from the first trajectory point
+    const bool is_ahead_of_first_point = point_arc_length > first_ego_trajectory_point_arc_length;
+    const bool is_point_already_in_trajectory =
+      std::any_of(traj_points.begin(), traj_points.end(), [&](const TrajectoryPoint & traj_point) {
+        return autoware_utils::calc_distance2d(traj_point, point) < 1e-1;
+      });
+    if (is_ahead_of_first_point || is_point_already_in_trajectory) {
+      return;
     }
 
-    point.longitudinal_velocity_mps = traj_points.front().longitudinal_velocity_mps;
     traj_points.insert(traj_points.begin(), point);
+    traj_points.front().longitudinal_velocity_mps =
+      first_ego_trajectory_point.longitudinal_velocity_mps;
   });
 }
+
 }  // namespace autoware::trajectory_optimizer::utils
