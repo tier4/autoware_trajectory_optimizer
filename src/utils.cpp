@@ -353,7 +353,7 @@ void expand_trajectory_with_ego_history(
   [[maybe_unused]] const Odometry & current_odometry,
   [[maybe_unused]] const TrajectoryOptimizerParams & params)
 {
-  if (ego_history_points.empty() || traj_points.empty()) {
+  if (ego_history_points.empty()) {
     return;
   }
 
