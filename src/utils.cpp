@@ -59,10 +59,6 @@ void smooth_trajectory_with_elastic_band(
 
 void remove_invalid_points(TrajectoryPoints & input_trajectory)
 {
-  if (input_trajectory.size() < 2) {
-    RCLCPP_ERROR(get_logger(), "No enough points in trajectory after overlap points removal");
-    return;
-  }
   // remove points with nan or inf values
   input_trajectory.erase(
     std::remove_if(
@@ -71,9 +67,15 @@ void remove_invalid_points(TrajectoryPoints & input_trajectory)
     input_trajectory.end());
 
   utils::remove_close_proximity_points(input_trajectory, 1E-2);
+
+  if (input_trajectory.size() < 2) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "No enough points in trajectory after removing close proximity points and invalid points");
+    return;
+  }
   const bool is_driving_forward = true;
   autoware::motion_utils::insertOrientation(input_trajectory, is_driving_forward);
-
   autoware::motion_utils::removeFirstInvalidOrientationPoints(input_trajectory);
   size_t previous_size{input_trajectory.size()};
   do {
