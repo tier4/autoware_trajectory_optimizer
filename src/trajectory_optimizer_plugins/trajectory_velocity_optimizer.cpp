@@ -53,6 +53,11 @@ void TrajectoryVelocityOptimizer::optimize_trajectory(
   const double & target_pull_out_acc_mps2 = params.target_pull_out_acc_mps2;
   const double & max_speed_mps = params.max_speed_mps;
 
+  // Limit lateral acceleration
+  if (params.limit_lateral_acceleration) {
+    utils::limit_lateral_acceleration(traj_points, params);
+  }
+
   auto initial_motion_speed =
     (current_speed > target_pull_out_speed_mps) ? current_speed : target_pull_out_speed_mps;
   auto initial_motion_acc = (current_speed > target_pull_out_speed_mps)

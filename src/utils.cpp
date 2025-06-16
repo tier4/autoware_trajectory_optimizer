@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <iterator>
 
 namespace autoware::trajectory_optimizer::utils
 {
@@ -123,6 +124,42 @@ void set_max_velocity(TrajectoryPoints & input_trajectory_array, const float max
     [max_velocity](TrajectoryPoint & point) {
       point.longitudinal_velocity_mps = std::min(point.longitudinal_velocity_mps, max_velocity);
     });
+}
+
+void limit_lateral_acceleration(
+  TrajectoryPoints & input_trajectory_array, const TrajectoryOptimizerParams & params)
+{
+  motion_utils::calculate_time_from_start(
+    input_trajectory_array, params.current_odometry.pose.pose.position);
+  for (auto itr = input_trajectory_array.begin(); itr < std::prev(input_trajectory_array.end());
+       ++itr) {
+    const auto current_pose = itr->pose;
+    const auto next_pose = std::next(itr)->pose;
+    const auto delta_time{0.1};
+    // const auto delta_time =
+    //   std::next(itr)->time_from_start.sec - itr->time_from_start.sec +
+    //   (std::next(itr)->time_from_start.nanosec - itr->time_from_start.nanosec) * 1e-9;
+    tf2::Quaternion q_current;
+    tf2::Quaternion q_next;
+    tf2::convert(current_pose.orientation, q_current);
+    tf2::convert(next_pose.orientation, q_next);
+    double delta_theta = q_current.angleShortestPath(q_next);
+    // Handle wrap-around
+    if (delta_theta > M_PI) {
+      delta_theta -= 2.0 * M_PI;
+    } else if (delta_theta < -M_PI) {
+      delta_theta += 2.0 * M_PI;
+    }
+
+    const double yaw_rate = std::max(std::abs(delta_theta / delta_time), 1.0E-5);
+    const double current_speed = std::abs(itr->longitudinal_velocity_mps);
+    // Compute lateral acceleration
+    const double lateral_acceleration = std::abs(current_speed * yaw_rate);
+    if (lateral_acceleration < params.max_lateral_accel_mps2) continue;
+    itr->longitudinal_velocity_mps = params.max_lateral_accel_mps2 / yaw_rate;
+  }
+  motion_utils::calculate_time_from_start(
+    input_trajectory_array, params.current_odometry.pose.pose.position);
 }
 
 void filter_velocity(

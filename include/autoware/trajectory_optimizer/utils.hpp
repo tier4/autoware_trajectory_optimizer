@@ -135,6 +135,9 @@ void clamp_velocities(
 void set_max_velocity(
   std::vector<TrajectoryPoint> & input_trajectory_array, const float max_velocity);
 
+void limit_lateral_acceleration(
+  TrajectoryPoints & input_trajectory_array, const TrajectoryOptimizerParams & params);
+
 /**
  * @brief Removes points from the input trajectory that are too close to each other.
  *

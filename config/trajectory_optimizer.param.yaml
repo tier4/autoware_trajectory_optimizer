@@ -5,12 +5,14 @@
     nearest_yaw_threshold_rad: 1.0 # [rad]
     target_pull_out_speed_mps: 1.0 # [mps]
     target_pull_out_acc_mps2: 1.0 # [mps2]
-    max_speed_mps: 5.0 # [mps]
+    max_speed_mps: 1.388 #[5 kmph], 2.77[10 kmph], 4.16[15 kmph] [mps]
+    max_lateral_accel_mps2: 0.5 #[mps2]
     spline_interpolation_resolution_m: 0.5 # [m]
     backward_trajectory_extension_m: 5.0 # [m]
     use_akima_spline_interpolation: true
     smooth_trajectories: true
     limit_speed: true
+    limit_lateral_acceleration: true
     set_engage_speed: true
     fix_invalid_points: true
     smooth_velocities: false
