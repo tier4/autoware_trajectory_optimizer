@@ -129,16 +129,29 @@ void set_max_velocity(TrajectoryPoints & input_trajectory_array, const float max
 void limit_lateral_acceleration(
   TrajectoryPoints & input_trajectory_array, const TrajectoryOptimizerParams & params)
 {
-  motion_utils::calculate_time_from_start(
-    input_trajectory_array, params.current_odometry.pose.pose.position);
-  for (auto itr = input_trajectory_array.begin(); itr < std::prev(input_trajectory_array.end());
-       ++itr) {
+  if (input_trajectory_array.empty()) {
+    return;
+  }
+
+  auto get_delta_time = [](const auto & next, const auto & current) -> double {
+    return next->time_from_start.sec + next->time_from_start.nanosec * 1e-9 -
+           (current->time_from_start.sec + current->time_from_start.nanosec * 1e-9);
+  };
+
+  const auto & current_position = params.current_odometry.pose.pose.position;
+  motion_utils::calculate_time_from_start(input_trajectory_array, current_position);
+
+  const auto closest_index =
+    motion_utils::findNearestIndex(input_trajectory_array, current_position);
+  const auto start_itr = std::next(
+    input_trajectory_array.begin(),
+    static_cast<std::vector<TrajectoryPoint>::difference_type>(closest_index));
+
+  for (auto itr = start_itr; itr < std::prev(input_trajectory_array.end()); ++itr) {
     const auto current_pose = itr->pose;
     const auto next_pose = std::next(itr)->pose;
-    const auto delta_time{0.1};
-    // const auto delta_time =
-    //   std::next(itr)->time_from_start.sec - itr->time_from_start.sec +
-    //   (std::next(itr)->time_from_start.nanosec - itr->time_from_start.nanosec) * 1e-9;
+    const auto delta_time = get_delta_time(std::next(itr), itr);
+
     tf2::Quaternion q_current;
     tf2::Quaternion q_next;
     tf2::convert(current_pose.orientation, q_current);
@@ -156,8 +169,10 @@ void limit_lateral_acceleration(
     // Compute lateral acceleration
     const double lateral_acceleration = std::abs(current_speed * yaw_rate);
     if (lateral_acceleration < params.max_lateral_accel_mps2) continue;
+
     itr->longitudinal_velocity_mps = params.max_lateral_accel_mps2 / yaw_rate;
   }
+
   motion_utils::calculate_time_from_start(
     input_trajectory_array, params.current_odometry.pose.pose.position);
 }
@@ -405,16 +420,24 @@ void expand_trajectory_with_ego_history(
     ego_history_points, first_ego_history_point.pose.position,
     first_ego_trajectory_point.pose.position);
 
+  const auto ego_position = params.current_odometry.pose.pose.position;
+  const auto distance_ego_to_first_trajectory_point =
+    autoware_utils::calc_distance2d(first_ego_trajectory_point, ego_position);
+
   std::for_each(ego_history_points.rbegin(), ego_history_points.rend(), [&](const auto & point) {
     const auto point_arc_length = autoware::motion_utils::calcSignedArcLength(
       ego_history_points, first_ego_history_point.pose.position, point.pose.position);
 
     const bool is_ahead_of_first_point = point_arc_length > first_ego_trajectory_point_arc_length;
+    const bool is_closer_than_first_trajectory_point =
+      autoware_utils::calc_distance2d(point, ego_position) < distance_ego_to_first_trajectory_point;
     const bool is_point_already_in_trajectory =
       std::any_of(traj_points.begin(), traj_points.end(), [&](const TrajectoryPoint & traj_point) {
         return autoware_utils::calc_distance2d(traj_point, point) < 1e-1;
       });
-    if (is_ahead_of_first_point || is_point_already_in_trajectory) {
+    if (
+      is_ahead_of_first_point || is_point_already_in_trajectory ||
+      is_closer_than_first_trajectory_point) {
       return;
     }
 
