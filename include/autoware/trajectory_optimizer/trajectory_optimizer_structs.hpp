@@ -36,12 +36,14 @@ struct TrajectoryOptimizerParams
   double target_pull_out_speed_mps{0.0};
   double target_pull_out_acc_mps2{0.0};
   double max_speed_mps{0.0};
+  double max_lateral_accel_mps2{0.0};
   double spline_interpolation_resolution_m{0.0};
   double backward_trajectory_extension_m{0.0};
   bool use_akima_spline_interpolation{false};
   bool smooth_velocities{false};
   bool smooth_trajectories{false};
   bool limit_speed{false};
+  bool limit_lateral_acceleration{false};
   bool set_engage_speed{false};
   bool fix_invalid_points{false};
   bool publish_last_trajectory{false};

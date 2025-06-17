@@ -96,6 +96,7 @@ rcl_interfaces::msg::SetParametersResult TrajectoryOptimizer::on_parameter(
   update_param<double>(parameters, "target_pull_out_speed_mps", params.target_pull_out_speed_mps);
   update_param<double>(parameters, "target_pull_out_acc_mps2", params.target_pull_out_acc_mps2);
   update_param<double>(parameters, "max_speed_mps", params.max_speed_mps);
+  update_param<double>(parameters, "max_lateral_accel_mps2", params.max_lateral_accel_mps2);
   update_param<double>(
     parameters, "spline_interpolation_resolution_m", params.spline_interpolation_resolution_m);
   update_param<double>(
@@ -105,6 +106,7 @@ rcl_interfaces::msg::SetParametersResult TrajectoryOptimizer::on_parameter(
   update_param<bool>(parameters, "smooth_velocities", params.smooth_velocities);
   update_param<bool>(parameters, "smooth_trajectories", params.smooth_trajectories);
   update_param<bool>(parameters, "limit_speed", params.limit_speed);
+  update_param<bool>(parameters, "limit_lateral_acceleration", params.limit_lateral_acceleration);
   update_param<bool>(parameters, "set_engage_speed", params.set_engage_speed);
   update_param<bool>(parameters, "fix_invalid_points", params.fix_invalid_points);
   update_param<bool>(parameters, "publish_last_trajectory", params.publish_last_trajectory);
@@ -160,6 +162,8 @@ void TrajectoryOptimizer::set_up_params()
   params_.target_pull_out_acc_mps2 =
     get_or_declare_parameter<double>(*this, "target_pull_out_acc_mps2");
   params_.max_speed_mps = get_or_declare_parameter<double>(*this, "max_speed_mps");
+  params_.max_lateral_accel_mps2 =
+    get_or_declare_parameter<double>(*this, "max_lateral_accel_mps2");
   params_.spline_interpolation_resolution_m =
     get_or_declare_parameter<double>(*this, "spline_interpolation_resolution_m");
   params_.backward_trajectory_extension_m =
@@ -169,6 +173,8 @@ void TrajectoryOptimizer::set_up_params()
   params_.smooth_velocities = get_or_declare_parameter<bool>(*this, "smooth_velocities");
   params_.smooth_trajectories = get_or_declare_parameter<bool>(*this, "smooth_trajectories");
   params_.limit_speed = get_or_declare_parameter<bool>(*this, "limit_speed");
+  params_.limit_lateral_acceleration =
+    get_or_declare_parameter<bool>(*this, "limit_lateral_acceleration");
   params_.set_engage_speed = get_or_declare_parameter<bool>(*this, "set_engage_speed");
 
   params_.fix_invalid_points = get_or_declare_parameter<bool>(*this, "fix_invalid_points");
@@ -237,6 +243,8 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
     eb_smoother_optimizer_ptr_->optimize_trajectory(trajectory.points, params_);
     trajectory_spline_smoother_ptr_->optimize_trajectory(trajectory.points, params_);
     trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
+    motion_utils::calculate_time_from_start(
+      trajectory.points, current_odometry_ptr_->pose.pose.position);
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {
