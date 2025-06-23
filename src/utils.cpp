@@ -94,16 +94,24 @@ void remove_close_proximity_points(TrajectoryPoints & input_trajectory_array, co
     return;
   }
 
-  input_trajectory_array.erase(
-    std::remove_if(
-      std::next(input_trajectory_array.begin()),  // Start from second element
-      input_trajectory_array.end(),
-      [&](const TrajectoryPoint & point) {
-        const auto prev_it = std::prev(&point);
-        const auto dist = autoware_utils::calc_distance2d(point, *prev_it);
-        return dist < min_dist;
-      }),
-    input_trajectory_array.end());
+  // Use manual loop with iterators to safely access previous element
+  auto write_it = input_trajectory_array.begin() + 1;  // Start writing from second element
+  auto read_it = input_trajectory_array.begin() + 1;   // Start reading from second element
+  
+  while (read_it != input_trajectory_array.end()) {
+    const auto prev_it = write_it - 1;  // Safe because write_it starts at begin() + 1
+    const auto dist = autoware_utils::calc_distance2d(*read_it, *prev_it);
+    
+    if (dist >= min_dist) {
+      if (write_it != read_it) {
+        *write_it = *read_it;
+      }
+      ++write_it;
+    }
+    ++read_it;
+  }
+  
+  input_trajectory_array.erase(write_it, input_trajectory_array.end());
 }
 
 void clamp_velocities(
@@ -143,6 +151,14 @@ void limit_lateral_acceleration(
 
   const auto closest_index =
     motion_utils::findNearestIndex(input_trajectory_array, current_position);
+  
+  // Ensure closest_index is within valid bounds before casting
+  if (closest_index >= input_trajectory_array.size()) {
+    RCLCPP_WARN(get_logger(), "Closest index %zu is out of bounds for trajectory size %zu", 
+                closest_index, input_trajectory_array.size());
+    return;
+  }
+  
   const auto start_itr = std::next(
     input_trajectory_array.begin(),
     static_cast<std::vector<TrajectoryPoint>::difference_type>(closest_index));
@@ -151,6 +167,11 @@ void limit_lateral_acceleration(
     const auto current_pose = itr->pose;
     const auto next_pose = std::next(itr)->pose;
     const auto delta_time = get_delta_time(std::next(itr), itr);
+    
+    // Skip if delta_time is too small or negative to avoid numerical issues
+    if (delta_time <= 1e-6) {
+      continue;
+    }
 
     tf2::Quaternion q_current;
     tf2::Quaternion q_next;
@@ -164,7 +185,7 @@ void limit_lateral_acceleration(
       delta_theta += 2.0 * M_PI;
     }
 
-    const double yaw_rate = std::max(std::abs(delta_theta / delta_time), 1.0E-5);
+    const double yaw_rate = std::abs(delta_theta) / delta_time;
     const double current_speed = std::abs(itr->longitudinal_velocity_mps);
     // Compute lateral acceleration
     const double lateral_acceleration = std::abs(current_speed * yaw_rate);
@@ -214,6 +235,13 @@ void filter_velocity(
   const size_t traj_closest = autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
     input_trajectory, current_odometry.pose.pose, nearest_dist_threshold, nearest_yaw_threshold);
 
+  // Ensure traj_closest is within valid bounds
+  if (traj_closest >= input_trajectory.size()) {
+    RCLCPP_WARN(get_logger(), "Trajectory closest index %zu is out of bounds for trajectory size %zu", 
+                traj_closest, input_trajectory.size());
+    return;
+  }
+
   // // Clip trajectory from closest point
   TrajectoryPoints clipped;
   clipped.insert(
@@ -245,8 +273,16 @@ bool validate_point(const TrajectoryPoint & point)
 
 void apply_spline(TrajectoryPoints & traj_points, const TrajectoryOptimizerParams & params)
 {
+  // Handle edge cases gracefully
+  if (traj_points.empty()) {
+    RCLCPP_WARN(get_logger(), "Empty trajectory provided to apply_spline");
+    return;
+  }
+  
   if (traj_points.size() < 5) {
-    RCLCPP_ERROR(get_logger(), "Not enough points in trajectory for akima spline interpolation");
+    RCLCPP_DEBUG(get_logger(), "Trajectory has %zu points, which is less than 5 required for akima spline interpolation. Skipping spline interpolation.", traj_points.size());
+    // For trajectories with 2-4 points, we could still do simple linear interpolation
+    // but for now we'll just skip spline interpolation to maintain existing behavior
     return;
   }
   auto trajectory_interpolation_util =
@@ -261,7 +297,13 @@ void apply_spline(TrajectoryPoints & traj_points, const TrajectoryOptimizerParam
   TrajectoryPoints output_points{traj_points.front()};
   constexpr double epsilon{1e-2};
   const auto ds = std::max(params.spline_interpolation_resolution_m, epsilon);
-  output_points.reserve(static_cast<size_t>(trajectory_interpolation_util->length() / ds));
+  
+  // Calculate expected size with overflow protection
+  const double expected_size = trajectory_interpolation_util->length() / ds;
+  constexpr size_t max_reasonable_size = 100000;  // Reasonable upper limit for trajectory points
+  if (expected_size > 0 && expected_size < max_reasonable_size) {
+    output_points.reserve(static_cast<size_t>(expected_size));
+  }
 
   for (auto s = ds; s <= trajectory_interpolation_util->length(); s += ds) {
     auto p = trajectory_interpolation_util->compute(s);
@@ -393,11 +435,15 @@ void add_ego_state_to_trajectory(
   for (size_t i = traj_points.size() - 1; i > 0; i--) {
     accumulated_length += autoware_utils::calc_distance2d(traj_points.at(i - 1), traj_points.at(i));
     if (accumulated_length > params.backward_trajectory_extension_m) {
-      clip_idx = i;
+      clip_idx = i - 1;  // Keep points from i-1 onwards since we want to preserve the point before exceeding the limit
       break;
     }
   }
-  traj_points.erase(traj_points.begin(), traj_points.begin() + static_cast<int>(clip_idx));
+  
+  // Ensure clip_idx is within valid bounds
+  if (clip_idx > 0 && clip_idx < traj_points.size()) {
+    traj_points.erase(traj_points.begin(), traj_points.begin() + clip_idx);
+  }
 }
 
 void expand_trajectory_with_ego_history(

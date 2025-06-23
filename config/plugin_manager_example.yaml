@@ -1,0 +1,30 @@
+/**:
+  ros__parameters:
+    # Plugin execution sequence configuration
+    # Format: "plugin1,plugin2:disabled,plugin1,plugin3:param1=1.0:param2=2.0"
+    #
+    # Available plugins:
+    # - trajectory_extender: Extends trajectory backward using ego history
+    # - trajectory_point_fixer: Removes invalid/repeated points
+    # - eb_smoother: Elastic Band smoother for path smoothing
+    # - spline_smoother: Akima spline interpolation
+    # - velocity_optimizer: Velocity profile optimization
+    #
+    # Special options:
+    # - :disabled - Skip this execution step
+    # - :param=value - Set custom parameter for this execution
+    #
+    # Example 1: Default sequence (matches current hardcoded behavior)
+    plugin_execution_sequence: "trajectory_extender,trajectory_point_fixer,eb_smoother,spline_smoother,velocity_optimizer,spline_smoother,trajectory_point_fixer"
+    
+    # Example 2: Simplified sequence
+    # plugin_execution_sequence: "trajectory_point_fixer,eb_smoother,velocity_optimizer"
+    
+    # Example 3: Disable elastic band smoother in the sequence
+    # plugin_execution_sequence: "trajectory_extender,trajectory_point_fixer,eb_smoother:disabled,spline_smoother,velocity_optimizer"
+    
+    # Example 4: Run velocity optimization twice with different parameters
+    # plugin_execution_sequence: "trajectory_point_fixer,velocity_optimizer:max_vel=10.0,eb_smoother,velocity_optimizer:max_vel=5.0"
+    
+    # Example 5: Custom sequence for testing
+    # plugin_execution_sequence: "trajectory_point_fixer,spline_smoother,trajectory_point_fixer,velocity_optimizer"

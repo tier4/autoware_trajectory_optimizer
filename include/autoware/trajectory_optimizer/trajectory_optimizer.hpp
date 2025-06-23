@@ -24,6 +24,7 @@
 #include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_spline_smoother.hpp"
 #include "autoware/trajectory_optimizer/trajectory_optimizer_plugins/trajectory_velocity_optimizer.hpp"
 #include "autoware/trajectory_optimizer/trajectory_optimizer_structs.hpp"
+#include "autoware/trajectory_optimizer/plugin_manager.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <autoware_utils/ros/polling_subscriber.hpp>
@@ -85,6 +86,9 @@ private:
   rcl_interfaces::msg::SetParametersResult on_parameter(
     const std::vector<rclcpp::Parameter> & parameters);
 
+  // Plugin Manager
+  std::unique_ptr<PluginManager> plugin_manager_;
+  
   // Optimizer pointers
   std::shared_ptr<plugin::TrajectoryEBSmootherOptimizer> eb_smoother_optimizer_ptr_;
   std::shared_ptr<plugin::TrajectoryExtender> trajectory_extender_ptr_;
@@ -96,7 +100,6 @@ private:
   rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
   // interface publisher
   rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
-  rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr debug_processing_time_detail_;
 
   autoware_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
     this, "~/input/odometry"};

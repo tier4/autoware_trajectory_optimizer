@@ -41,9 +41,9 @@ TrajectoryOptimizer::TrajectoryOptimizer(const rclcpp::NodeOptions & options)
 {
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
-  debug_processing_time_detail_ =
+  debug_processing_time_detail_pub_ =
     create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
-  time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_);
+  time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_pub_);
 
   set_up_params();
 
@@ -57,12 +57,11 @@ TrajectoryOptimizer::TrajectoryOptimizer(const rclcpp::NodeOptions & options)
     std::bind(&TrajectoryOptimizer::on_traj, this, std::placeholders::_1));
   // interface publisher
   trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
-  // debug time keeper
-  debug_processing_time_detail_pub_ =
-    create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
-  time_keeper_ = std::make_shared<autoware_utils::TimeKeeper>(debug_processing_time_detail_pub_);
   // last time a trajectory was received
   last_time_ = std::make_shared<rclcpp::Time>(now());
+  
+  // Initialize plugin manager
+  plugin_manager_ = std::make_unique<PluginManager>(this, time_keeper_);
 }
 
 void TrajectoryOptimizer::initialize_optimizers()
@@ -81,6 +80,17 @@ void TrajectoryOptimizer::initialize_optimizers()
     "trajectory_spline_smoother", this, time_keeper_, params_);
   trajectory_velocity_optimizer_ptr_ = std::make_shared<plugin::TrajectoryVelocityOptimizer>(
     "trajectory_velocity_optimizer", this, time_keeper_, params_);
+  
+  // Register plugins with the manager
+  plugin_manager_->register_plugin("eb_smoother", eb_smoother_optimizer_ptr_);
+  plugin_manager_->register_plugin("trajectory_extender", trajectory_extender_ptr_);
+  plugin_manager_->register_plugin("trajectory_point_fixer", trajectory_point_fixer_ptr_);
+  plugin_manager_->register_plugin("spline_smoother", trajectory_spline_smoother_ptr_);
+  plugin_manager_->register_plugin("velocity_optimizer", trajectory_velocity_optimizer_ptr_);
+  
+  // Load execution sequence from parameters
+  plugin_manager_->load_execution_sequence_from_params();
+  
   initialized_optimizers_ = true;
 }
 
@@ -131,6 +141,11 @@ rcl_interfaces::msg::SetParametersResult TrajectoryOptimizer::on_parameter(
   }
   if (trajectory_velocity_optimizer_ptr_) {
     trajectory_velocity_optimizer_ptr_->on_parameter(parameters);
+  }
+  
+  // Forward parameters to plugin manager
+  if (plugin_manager_) {
+    return plugin_manager_->on_parameter(parameters);
   }
 
   rcl_interfaces::msg::SetParametersResult result;
@@ -205,6 +220,13 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
   previous_trajectory_ptr_ = sub_previous_trajectory_.take_data();
   current_odometry_ptr_ = sub_current_odometry_.take_data();
   current_acceleration_ptr_ = sub_current_acceleration_.take_data();
+  
+  // Check for null pointers before dereferencing
+  if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
+    RCLCPP_ERROR(get_logger(), "No odometry or acceleration data");
+    return;
+  }
+  
   params_.current_odometry = *current_odometry_ptr_;
   params_.current_acceleration = *current_acceleration_ptr_;
 
@@ -224,11 +246,6 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
   }
   last_time_ = std::make_shared<rclcpp::Time>(now());
 
-  if (!current_odometry_ptr_ || !current_acceleration_ptr_) {
-    RCLCPP_ERROR(get_logger(), "No odometry or acceleration data");
-    return;
-  }
-
   if (params_.extend_trajectory_backward) {
     utils::add_ego_state_to_trajectory(
       past_ego_state_trajectory_.points, *current_odometry_ptr_, params_);
@@ -236,14 +253,10 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
 
   Trajectories output_trajectories = *msg;
   for (auto & trajectory : output_trajectories.trajectories) {
-    // apply optimizers
-    trajectory_extender_ptr_->optimize_trajectory(trajectory.points, params_);
-    trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
-    eb_smoother_optimizer_ptr_->optimize_trajectory(trajectory.points, params_);
-    trajectory_spline_smoother_ptr_->optimize_trajectory(trajectory.points, params_);
-    trajectory_velocity_optimizer_ptr_->optimize_trajectory(trajectory.points, params_);
-    trajectory_spline_smoother_ptr_->optimize_trajectory(trajectory.points, params_);
-    trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
+    // Use plugin manager to execute optimization sequence
+    plugin_manager_->execute_optimization_sequence(trajectory.points, params_);
+    
+    // Calculate time from start after all optimizations
     motion_utils::calculate_time_from_start(
       trajectory.points, current_odometry_ptr_->pose.pose.position);
   }

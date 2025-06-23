@@ -19,3 +19,10 @@
     publish_last_trajectory: false
     keep_last_trajectory: false
     extend_trajectory_backward: true
+    
+    # Plugin execution sequence
+    # Defines the order and configuration of optimization plugins
+    # Format: comma-separated list of plugin names with optional modifiers
+    # Available plugins: trajectory_extender, trajectory_point_fixer, eb_smoother, spline_smoother, velocity_optimizer
+    # Default sequence matches the original hardcoded behavior
+    plugin_execution_sequence: "trajectory_extender,trajectory_point_fixer,eb_smoother,spline_smoother,velocity_optimizer,spline_smoother,trajectory_point_fixer"
