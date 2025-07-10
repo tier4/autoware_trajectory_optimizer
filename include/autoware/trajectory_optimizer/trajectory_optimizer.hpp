@@ -31,7 +31,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
 
-#include <autoware_new_planning_msgs/msg/trajectories.hpp>
+#include <autoware_internal_planning_msgs/msg/candidate_trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory__struct.hpp>
@@ -55,14 +55,14 @@ using autoware::path_smoother::ReplanChecker;
 using SmootherTimekeeper = autoware::path_smoother::TimeKeeper;
 
 using autoware::velocity_smoother::JerkFilteredSmoother;
-using autoware_new_planning_msgs::msg::Trajectories;
+using autoware_internal_planning_msgs::msg::CandidateTrajectories;
+using autoware_internal_planning_msgs::msg::CandidateTrajectory;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
-using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 
 class TrajectoryOptimizer : public rclcpp::Node
 {
@@ -70,7 +70,7 @@ public:
   explicit TrajectoryOptimizer(const rclcpp::NodeOptions & options);
 
 private:
-  void on_traj(const Trajectories::ConstSharedPtr msg);
+  void on_traj(const CandidateTrajectories::ConstSharedPtr msg);
   void set_up_params();
   void initialize_planners();
   void reset_previous_data();
@@ -93,9 +93,10 @@ private:
   std::shared_ptr<plugin::TrajectoryVelocityOptimizer> trajectory_velocity_optimizer_ptr_;
 
   // interface subscriber
-  rclcpp::Subscription<Trajectories>::SharedPtr trajectories_sub_;
+  rclcpp::Subscription<CandidateTrajectories>::SharedPtr trajectories_sub_;
   // interface publisher
-  rclcpp::Publisher<Trajectories>::SharedPtr trajectories_pub_;
+  rclcpp::Publisher<Trajectory>::SharedPtr trajectory_pub_;
+  rclcpp::Publisher<CandidateTrajectories>::SharedPtr trajectories_pub_;
   rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr debug_processing_time_detail_;
 
   autoware_utils::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{

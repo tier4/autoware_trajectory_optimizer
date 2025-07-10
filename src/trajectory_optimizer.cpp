@@ -24,7 +24,7 @@
 #include <autoware_utils/ros/update_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
-#include <autoware_new_planning_msgs/msg/detail/trajectories__struct.hpp>
+#include <autoware_internal_planning_msgs/msg/detail/candidate_trajectories__struct.hpp>
 #include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 
 #include <algorithm>
@@ -52,11 +52,12 @@ TrajectoryOptimizer::TrajectoryOptimizer(const rclcpp::NodeOptions & options)
     std::bind(&TrajectoryOptimizer::on_parameter, this, std::placeholders::_1));
 
   // interface subscriber
-  trajectories_sub_ = create_subscription<Trajectories>(
+  trajectories_sub_ = create_subscription<CandidateTrajectories>(
     "~/input/trajectories", 1,
     std::bind(&TrajectoryOptimizer::on_traj, this, std::placeholders::_1));
   // interface publisher
-  trajectories_pub_ = create_publisher<Trajectories>("~/output/trajectories", 1);
+  trajectory_pub_ = create_publisher<Trajectory>("~/output/trajectory", 1);
+  trajectories_pub_ = create_publisher<CandidateTrajectories>("~/output/trajectories", 1);
   // debug time keeper
   debug_processing_time_detail_pub_ =
     create_publisher<autoware_utils::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
@@ -186,18 +187,17 @@ void TrajectoryOptimizer::set_up_params()
     get_or_declare_parameter<bool>(*this, "extend_trajectory_backward");
 }
 
-void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstSharedPtr msg)
+void TrajectoryOptimizer::on_traj([[maybe_unused]] const CandidateTrajectories::ConstSharedPtr msg)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
   initialize_optimizers();
 
   auto create_output_trajectory_from_past = [&]() {
-    NewTrajectory previous_trajectory;
+    CandidateTrajectory previous_trajectory;
     previous_trajectory.points = previous_trajectory_ptr_->points;
     previous_trajectory.header = previous_trajectory_ptr_->header;
     previous_trajectory.header.stamp = now();
-    previous_trajectory.generator_id = msg->trajectories.front().generator_id;
-    previous_trajectory.score = 1.0;
+    previous_trajectory.generator_id = msg->candidate_trajectories.front().generator_id;
     motion_utils::calculate_time_from_start(
       previous_trajectory.points, current_odometry_ptr_->pose.pose.position);
     return previous_trajectory;
@@ -215,9 +215,9 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
     auto current_time = now();
     auto time_diff = (rclcpp::Time(current_time) - *last_time_).seconds();
     if (time_diff < keep_last_trajectory_s) {
-      Trajectories output_trajectories = *msg;
-      output_trajectories.trajectories.clear();
-      output_trajectories.trajectories.push_back(create_output_trajectory_from_past());
+      CandidateTrajectories output_trajectories = *msg;
+      output_trajectories.candidate_trajectories.clear();
+      output_trajectories.candidate_trajectories.push_back(create_output_trajectory_from_past());
       trajectories_pub_->publish(output_trajectories);
       return;
     }
@@ -234,8 +234,8 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
       past_ego_state_trajectory_.points, *current_odometry_ptr_, params_);
   }
 
-  Trajectories output_trajectories = *msg;
-  for (auto & trajectory : output_trajectories.trajectories) {
+  CandidateTrajectories output_trajectories = *msg;
+  for (auto & trajectory : output_trajectories.candidate_trajectories) {
     // apply optimizers
     trajectory_extender_ptr_->optimize_trajectory(trajectory.points, params_);
     trajectory_point_fixer_ptr_->optimize_trajectory(trajectory.points, params_);
@@ -249,10 +249,16 @@ void TrajectoryOptimizer::on_traj([[maybe_unused]] const Trajectories::ConstShar
   }
 
   if (previous_trajectory_ptr_ && params_.publish_last_trajectory) {
-    output_trajectories.trajectories.push_back(create_output_trajectory_from_past());
+    output_trajectories.candidate_trajectories.push_back(create_output_trajectory_from_past());
   }
 
   trajectories_pub_->publish(output_trajectories);
+
+  Trajectory output_trajectory;
+  output_trajectory.header = output_trajectories.candidate_trajectories.front().header;
+  output_trajectory.points = output_trajectories.candidate_trajectories.front().points;
+
+  trajectory_pub_->publish(output_trajectory);
 }
 
 }  // namespace autoware::trajectory_optimizer

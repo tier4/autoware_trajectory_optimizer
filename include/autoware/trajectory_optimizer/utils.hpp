@@ -24,6 +24,7 @@
 
 #include "geometry_msgs/msg/accel_with_covariance_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include <autoware_internal_planning_msgs/msg/candidate_trajectory.hpp>
 #include <autoware_new_planning_msgs/msg/trajectories.hpp>
 #include <autoware_perception_msgs/msg/detail/predicted_objects__struct.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
@@ -44,13 +45,13 @@ using autoware::path_smoother::PlannerData;
 using autoware::path_smoother::ReplanChecker;
 
 using autoware::velocity_smoother::JerkFilteredSmoother;
+using autoware_internal_planning_msgs::msg::CandidateTrajectory;
 using autoware_new_planning_msgs::msg::Trajectories;
 using autoware_perception_msgs::msg::PredictedObjects;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using nav_msgs::msg::Odometry;
-using NewTrajectory = autoware_new_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 void smooth_trajectory_with_elastic_band(
