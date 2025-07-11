@@ -24,8 +24,8 @@
 #include <autoware_utils/ros/update_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
-#include <autoware_internal_planning_msgs/msg/detail/candidate_trajectories__struct.hpp>
-#include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
+#include <autoware_internal_planning_msgs/msg/candidate_trajectories.hpp>
+#include <autoware_planning_msgs/msg/trajectory_point.hpp>
 
 #include <algorithm>
 #include <cstddef>
